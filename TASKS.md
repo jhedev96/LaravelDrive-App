@@ -76,7 +76,7 @@
 
 ## WS6 — QA, CI, Docs
 - [ ] W6.1 GH Actions: backend (PHP 8.4?/composer/pint/phpunit sqlite) + frontend (node 22, eslint + vite build)
-- [~] W6.2 Test targets: chunk flow, download (single/zip), shareable public access, shares, passport revoke, translation CRUD — **`FileFlowTest` 7 test + `ShareTest` 7 test ijo (shareable-link CRUD+password hashing+halaman publik `/file/s/{hash}`, shares add-users owner/policy/admin); passport-revoke + translation CRUD berikutnya**
+- [x] W6.2 Test targets: chunk flow, download (single/zip), shareable public access, shares, passport revoke, translation CRUD — **SELESAI (slice 1): `FileFlowTest` 7 (chunk contract, download/zip, trash+forever, index, kuota e2e); `ShareTest` 7 (link CRUD+hash password+halaman publik, shares w/ policy); `TranslationTest` 4 (languages CRUD, upsert multi-locale, kontrak data.single/group `'__'` feed via spatie loader); `LogoutTest` 1 (revoke token + JWT 401)** — sisa: shareable-link public download endpoint (W3.x realisasi)
 - [ ] W6.3 README baru (PHP 8.4+, Node 22+, passport:keys + personal client, reverb, npm run dev), screenshot doc preserved — **gotcha: JANGAN pakai `passport:install` berulang setelah migrations di-publish (ia publish ulang oauth migrations w/ stamp baru → duplikat); gunakan `passport:keys` + `passport:client --personal`** — sudah dimasukkan ke catatan setup
 
 ## WS7 — Release
