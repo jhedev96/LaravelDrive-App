@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Plan;
 use App\Role;
 use App\User;
 use Illuminate\Database\Seeder;
@@ -27,6 +28,13 @@ class UsersTableSeeder extends Seeder
 
         if ($adminRole) {
             $admin->roles()->syncWithoutDetaching([$adminRole->id]);
+        }
+
+        // the owner account rides the largest plan
+        $vip = Plan::query()->where('slug', 'vip')->first();
+        if ($vip && ! $admin->plan_id) {
+            $admin->plan_id = $vip->id;
+            $admin->save();
         }
     }
 }

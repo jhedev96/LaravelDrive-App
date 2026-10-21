@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Plan;
 use App\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class RegisterController extends Controller implements HasMiddleware
 
     protected function create(array $data)
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'], // hashed via model cast
@@ -49,6 +50,14 @@ class RegisterController extends Controller implements HasMiddleware
             'lastname' => $data['lastname'] ?? null,
             'status' => 1,
         ]);
+
+        // plan assignment is never mass-assignable (nobody self-upgrades
+        // to VIP); every new user starts on the default/free plan
+        if ($defaultPlan = Plan::default()) {
+            $user->forceFill(['plan_id' => $defaultPlan->id])->save();
+        }
+
+        return $user;
     }
 
     /**

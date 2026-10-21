@@ -7,10 +7,12 @@ use App\Traits\HandlesPaths;
 use App\Traits\HashesId;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 #[ObservedBy(FolderObserver::class)]
 class Folder extends File
 {
+    use HasFactory;
     protected $table = 'files';
 
     protected $attributes = ['type' => 'folder'];

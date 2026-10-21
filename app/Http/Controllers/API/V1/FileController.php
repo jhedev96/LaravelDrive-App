@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\File;
 use App\Http\Requests\FileRequest;
+use App\Services\StorageQuota;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -77,10 +78,15 @@ class FileController extends ApiController
 
         // check if the upload has finished (in chunk mode it will send smaller files)
         if ($save->isFinished()) {
-            $filedata = $this->getFileData($save->getFile(), $inputs);
+            $incoming = $save->getFile();
+
+            // storage quota gate (D18): reject before persisting anything
+            app(StorageQuota::class)->enforce($request->user(), (int) $incoming->getSize());
+
+            $filedata = $this->getFileData($incoming, $inputs);
             $fileEntry = File::create($filedata);
 
-            $this->storeLocalUpload($fileEntry, $save->getFile());
+            $this->storeLocalUpload($fileEntry, $incoming);
             $fileEntry->generatePath();
 
             // UploadToCloud::dispatch($fileEntry)->delay(now()->addMinutes(10));

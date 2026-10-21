@@ -7,6 +7,7 @@ use App\Traits\HandlesPaths;
 use App\Traits\HashesId;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 #[ObservedBy(FileObserver::class)]
 class File extends Model
 {
-    use HandlesPaths, HashesId, SoftDeletes;
+    use HandlesPaths, HashesId, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',

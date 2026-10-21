@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,7 +11,7 @@ use Laravel\Passport\HasApiTokens;
 
 class User extends Authenticatable implements OAuthenticatable
 {
-    use Notifiable, HasApiTokens, SoftDeletes;
+    use Notifiable, HasApiTokens, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -34,6 +35,8 @@ class User extends Authenticatable implements OAuthenticatable
         'password' => 'hashed',
         'email_verified_at' => 'datetime',
         'last_loged_in' => 'datetime',
+        'plan_id' => 'integer',
+        'plan_expires_at' => 'datetime',
     ];
 
     protected $with = ['roles'];
@@ -97,6 +100,28 @@ class User extends Authenticatable implements OAuthenticatable
     public function roles()
     {
         return $this->belongsToMany(Role::class);
+    }
+
+    /**
+     * Billing plan (D18). Null plan = behave as the default/free plan.
+     */
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function planOrders()
+    {
+        return $this->hasMany(PlanOrder::class);
+    }
+
+    /**
+     * Total size of every entry this user has uploaded (trashed entries
+     * included — they still occupy the storage until purged).
+     */
+    public function storageUsed(): int
+    {
+        return (int) File::query()->where('uploaded_by', $this->id)->sum('file_size');
     }
 
     public function meta()

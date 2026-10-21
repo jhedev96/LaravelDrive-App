@@ -23,4 +23,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn ($request) => $request->is('api/*') || $request->expectsJson()
         );
+
+        // contract for the FE quota snackbar (billing, D18)
+        $exceptions->render(function (\App\Exceptions\QuotaExceededException $e, $request) {
+            return response()->json([
+                'error' => 'quota_exceeded',
+                'message' => $e->getMessage(),
+                'remaining' => $e->remaining,
+                'requested' => $e->requested,
+            ], 422);
+        });
     })->create();
