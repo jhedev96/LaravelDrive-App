@@ -9,7 +9,13 @@
 - [x] W0.2 Tulis `PLAN.md` + `TASKS.md` di repo
 - [x] W0.3 Branch `modernization` dari `develop` + push pertama (docs)
 - [x] W0.4 Repo hygiene: hapus `_ide_helper.php`, repas `.gitattributes` (baris `CHANGELOG.md` mati), tambah `CHANGELOG.md`
-- [ ] W0.5 (opsional, perlu konfirmasi owner) prune ~26 branch `origin/dependabot/*`
+- [x] W0.5 (opsional, perlu konfirmasi owner) prune ~26 branch `origin/dependabot/*` — **22 branch dependabot dihapus 2026-10-21 (konfirmasi owner)**
+
+> Keputusan owner 2026-10-21 (arahan umum):
+> - **Prod DB: upgrade-in-place** (MySQL lama tetap jadi sumber; schema baru additive, serialize permissions dipertahankan D13/D15 — terkunci untuk W7)
+> - **FE: TypeScript** (revisi dari JS-first; WS5 pakai Vite + vue-tsc)
+> - **Infra: bare-metal** (tanpa Sail/Docker)
+> - **Stripe: keputusan revisi** — semua hit `stripe` di repo/histori = boilerplate skeleton L5.6 + class CSS `table-striped` (false positive); TIDAK ADA fitur billing sebelumnya. Menunggu kembali-wakdari keputusan owner (batal vs buat-fitur-baru)
 
 ## WS1 — Skeleton Laravel 13 (backend rebase) — **MILESTONE: commit `aa937c0`, test green**
 - [x] W1.1 Scaffold Laravel 13 fresh (composer create-project) di dir kerja; salin skeleton ke repo (ganti kartu mati: server.php, Kernel, seeds classmap)
@@ -39,6 +45,8 @@
 - [ ] W3.4 Storage driver selection per file (driver modernis PATH/FLOWS di File model/observers)
 - [ ] W3.5 Translation CRUD complements (driver database spatie) + FE pages port v4
 - [ ] W3.6 UploadToCloud job siap S3/DO/Dropbox/FTP (multi-disk safe + tests)
+- [ ] W3.7 **Billing skeleton (baru, D18)**: migrasi `plans` + `users.plan_id/plan_expires_at` + `plan_orders`; seed free (kuota env, default generous) + vip; `User::storageUsed()` + enforcement di upload/folder (error `quota_exceeded`); admin manage plan/status
+- [ ] W3.8 **Midtrans QRIS (D18)**: Snap token order, webhook `POST /webhooks/midtrans` (tanpa CSRF + verifikasi signature), update status order + aktivasi plan, admin oversight; gateway interface abstrak (Xendit fallback)
 
 ## WS4 — Bug fixes (inline, dari audit)
 - [x] W4.1 `uploads_local` disk hilang (DownloadResponse, CopyFileController) — semua dipanggil disk `local`

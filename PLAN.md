@@ -23,6 +23,14 @@ translation admin) dari stack beku era 2020 ke stack October 2026.
 | D10 | Broadcast | Pusher scaffold mati → **Laravel Reverb** (first-party WS) |
 | D11 | DB dev/CI | **SQLite** (SQL portabel-refactored); prod lu-sesuaikan (MySQL) |
 | D12 | Policy think | Commit lokal per task; push via gh cuma pas test ijo |
+| D13 | Permissions serialize | Dipertahankan via accessor (data legacy); cast JSON ditunda kapan prod-DB diputuskan (W7) |
+| D14 | Translation kontrak FE | Tabel `languages` sendiri + spatie `LanguageLine`; shape `{name: locale}` + nested `{single|group}[group][key]` |
+| D15 | FK legacy columns | Tidak ditambahkan (index saja) — upgrade path zero-delta |
+| D16 | Reverb | `^1.12` (latest stable; tak ada 2.x) |
+| D17 | Prod DB (owner 2026-10-21) | **Upgrade-in-place** — MySQL lama tetap sumber; schema additive |
+| D18 | Billing (owner 2026-10-21) | **Fitur BARU** (bukan peninggalan; hit "stripe" di repo = false positive boilerplate/CSS): plan `free` + `premium/vip` (kuota penyimpanan, env-driven); pembayaran **QRIS via Midtrans** (Snap), Xendit fallback; admin aktif + FE plan pages — WS3.7/W3.8 + WS5 |
+| D19 | Infra (owner 2026-10-21) | **Bare-metal** — tanpa Sail/Docker; dokumentasikan setup langkah |
+| D20 | FE bahasa (owner 2026-10-21) | **TypeScript** (revisi dari JS-first) — WS5 pakai Vite + vue-tsc, typings Pinia/router |
 
 ## 1. Anatomi perpindahan (ringkas)
 
@@ -44,11 +52,11 @@ translation admin) dari stack beku era 2020 ke stack October 2026.
 1. **WS0 Preflight** — branch `modernization`, PLAN/TASKS, repo hygiene (_ide_helper artifacts, CHANGELOG dangling).
 2. **WS1 Skeleton** — port app code ke Laravel 13 (models/observers/policies/requests/routes/providers).
 3. **WS2 Packages** — composer/npm modernise, Passport 13, Socialite, chunk-upload upstream, Flysystem 3, Intervention 4, Reverb, translation-loader.
-4. **WS3 Realisasi** — Passport UI + OAuth API, broadcasting realtime, 7 provider social, storage drivers (S3/DO/Dropbox), translation CRUD lengkap, rate limiter chunk.
+4. **WS3 Realisasi** — Passport UI + OAuth API, broadcasting realtime, 7 provider social, storage drivers (S3/DO/Dropbox), translation CRUD lengkap, rate limiter chunk, **billing skeleton (plans/quota) + Midtrans QRIS flow (D18)**.
 5. **WS4 Bugfix** — 12 bug audit (disk `uploads_local`, Vuex getter, csftToken, copy path, dsb) — inline sepanjangan WS1–WS3.
-6. **WS5 Frontend** — Vite + Vuetify 4 rebuild lengkap (FE lama jalan sampai FE baru paritas).
+6. **WS5 Frontend** — Vite + Vuetify 4 rebuild lengkap (**TypeScript — D20**; FE lama jalan sampai FE baru paritas) + halaman plan/billing QRIS.
 7. **WS6 QA/CI/docs** — GH Actions, test targets, README, finish line.
-8. **WS7 Release** — v2.0.0 tag, checklist deploy (backup, migrate, reverb, queue restart, re-login users).
+8. **WS7 Release** — v2.0.0 tag, checklist **deploy upgrade-in-place (D17)** (backup → migrate additive → seed plans → reverb → queue restart → re-login users → smoke matrix).
 
 ## 3. Good practices saat build
 - Test merah dulu (bila logic baru), ijo dulu baru push (rule D12).
