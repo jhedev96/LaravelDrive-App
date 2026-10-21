@@ -27,6 +27,7 @@ class File extends Model
         'type',
         'public_path',
         'parent_id',
+        'file_size',
         'driver',
         'driver_data',
         'uploaded_by',

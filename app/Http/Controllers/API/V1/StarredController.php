@@ -10,16 +10,6 @@ class StarredController extends ApiController
 {
     const TAG_NAME = 'starred';
 
-    private Request $request;
-
-    private Tag $tag;
-
-    public function __construct(Request $request, Tag $tag)
-    {
-        $this->request = $request;
-        $this->tag = $tag;
-    }
-
     public function index(Request $request)
     {
         $perPage = 20;
@@ -34,15 +24,15 @@ class StarredController extends ApiController
     /**
      * Attach "starred" tag to specified entries.
      */
-    public function add()
+    public function add(Request $request)
     {
-        $this->validate($this->request, [
+        $request->validate([
             'ids' => 'required|array|exists:files,id',
         ]);
 
-        $ids = $this->request->input('ids');
+        $ids = $request->input('ids');
         $tag = $this->getStarTag();
-        $tag->attachFile($ids, $this->request->user()->id);
+        $tag->attachFile($ids, $request->user()->id);
 
         return $this->respondWithMessage('Successfully added to stared.');
     }
@@ -50,16 +40,16 @@ class StarredController extends ApiController
     /**
      * Detach "starred" tag from specified entries.
      */
-    public function remove()
+    public function remove(Request $request)
     {
-        $this->validate($this->request, [
+        $request->validate([
             'ids' => 'required|array|exists:files,id',
         ]);
 
-        $ids = $this->request->input('ids');
+        $ids = $request->input('ids');
         $tag = $this->getStarTag();
 
-        $tag->detachFile($ids, $this->request->user()->id);
+        $tag->detachFile($ids, $request->user()->id);
 
         return $this->respondWithMessage('Successfully removed from stared.');
     }

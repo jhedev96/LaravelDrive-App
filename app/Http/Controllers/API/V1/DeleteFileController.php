@@ -11,51 +11,45 @@ use Illuminate\Support\Facades\Storage;
 
 class DeleteFileController extends ApiController
 {
-    private Request $request;
-
-    private File $file;
-
-    public function __construct(Request $request, File $file)
-    {
-        $this->request = $request;
-        $this->file = $file;
-    }
-
     /**
      * Delete (soft/permanent) specified entries and their children.
      */
-    public function delete()
+    public function delete(Request $request)
     {
-        $this->validate($this->request, [
+        // the Request is method-injected: constructor injection is a known
+        // stale-instance pitfall in the testing environment (action fell back
+        // to soft-delete because the old request lacked it)
+        $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'required|integer',
         ]);
 
-        $fileIds = $this->request->input('ids');
-
-        $this->deleteEntries($fileIds);
+        $this->deleteEntries($request->input('ids'), $request->input('action'));
 
         return response()->json(['success' => true, 'message' => 'files deleted successfully.']);
     }
 
     /**
      * @param  array|Collection  $fileIds
+     * @param  string|null  $action
      */
-    private function deleteEntries($fileIds)
+    private function deleteEntries($fileIds, string $action = null)
     {
-        foreach ($this->file->withTrashed()->whereIn('id', $fileIds)->cursor() as $file) {
+        // materialize before mutating: force-deleting rows while lazily
+        // iterating the same table (cursor) is undefined behavior on SQLite
+        $files = File::query()->withTrashed()->whereIn('id', $fileIds)->get();
+
+        foreach ($files as $file) {
             if ($file->type === 'folder') {
-                $this->deleteFolderFile($file);
+                $this->deleteFolderFile($file, $action);
             } else {
-                $this->deleteEntry($file);
+                $this->deleteEntry($file, $action);
             }
         }
     }
 
-    private function deleteEntry(File $original)
+    private function deleteEntry(File $original, ?string $action)
     {
-        $action = $this->request->input('action');
-
         if ($action === 'deleteforever') {
             $this->deleteFileStorage($original);
             $this->forceDeleteModel($original);
@@ -66,18 +60,18 @@ class DeleteFileController extends ApiController
         }
     }
 
-    private function deleteFolderFile(File $original)
+    private function deleteFolderFile(File $original, ?string $action)
     {
-        $this->deleteChildEntries($original);
-        $this->deleteEntry($original);
+        $this->deleteChildEntries($original, $action);
+        $this->deleteEntry($original, $action);
     }
 
-    private function deleteChildEntries(File $original)
+    private function deleteChildEntries(File $original, ?string $action)
     {
-        $fileIds = $this->file->where('parent_id', $original->id)->pluck('id');
+        $fileIds = File::query()->where('parent_id', $original->id)->pluck('id');
 
         if (! $fileIds->isEmpty()) {
-            $this->deleteEntries($fileIds);
+            $this->deleteEntries($fileIds, $action);
         }
     }
 

@@ -11,27 +11,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CopyFileController extends ApiController
 {
-    private Request $request;
-
-    private File $file;
-
-    public function __construct(Request $request, File $file)
-    {
-        $this->request = $request;
-        $this->file = $file;
-    }
-
     /**
      * Make copies of all specified entries and their children.
      */
-    public function copy()
+    public function copy(Request $request)
     {
-        $this->validate($this->request, [
+        // Request injected into the method: the constructor variant keeps a
+        // stale request instance across sequential test requests
+        $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'required|integer',
         ]);
 
-        $fileIds = $this->request->input('ids');
+        $fileIds = $request->input('ids');
 
         $copies = $this->copyEntries($fileIds);
 
@@ -47,7 +39,10 @@ class CopyFileController extends ApiController
     {
         $copies = collect();
 
-        foreach ($this->file->whereIn('id', $fileIds)->cursor() as $file) {
+        // materialize: models are saved while iterating this same table
+        $files = File::query()->whereIn('id', $fileIds)->get();
+
+        foreach ($files as $file) {
             if ($file->type === 'folder') {
                 $copies[] = $this->copyFolderFile($file, $parentId);
             } else {
@@ -76,7 +71,7 @@ class CopyFileController extends ApiController
 
     private function copyChildEntries(File $copy, File $original)
     {
-        $fileIds = $this->file->where('parent_id', $original->id)->pluck('id');
+        $fileIds = File::query()->where('parent_id', $original->id)->pluck('id');
 
         if (! $fileIds->isEmpty()) {
             $this->copyEntries($fileIds, $copy->id);

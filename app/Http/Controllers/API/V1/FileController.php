@@ -84,6 +84,9 @@ class FileController extends ApiController
             app(StorageQuota::class)->enforce($request->user(), (int) $incoming->getSize());
 
             $filedata = $this->getFileData($incoming, $inputs);
+            // the legacy app never persisted file_size at upload (NULL rows),
+            // which broke every downstream size-based feature (quota) — fixed
+            $filedata['file_size'] = (int) $incoming->getSize();
             $fileEntry = File::create($filedata);
 
             $this->storeLocalUpload($fileEntry, $incoming);
