@@ -5,10 +5,10 @@
 > Dev env: Ubuntu 24.04 ARM64 · PHP 8.5 (PPA ondrej) · Composer 2.x · Node 24 · **SQLite** (dev/test).
 
 ## WS0 — Preflight
-- [x] W0.1 Install PHP 8.5 (PPA ondrej) + Composer terbaru di box
+- [~] W0.1 Install PHP 8.5 (PPA ondrej) + Composer terbaru di box
 - [x] W0.2 Tulis `PLAN.md` + `TASKS.md` di repo
-- [ ] W0.3 Branch `modernization` dari `develop` + push pertama (docs)
-- [ ] W0.4 Repo hygiene: hapus `_ide_helper.php`, repas `.gitattributes` (baris `CHANGELOG.md` mati), tambah `CHANGELOG.md`
+- [x] W0.3 Branch `modernization` dari `develop` + push pertama (docs)
+- [x] W0.4 Repo hygiene: hapus `_ide_helper.php`, repas `.gitattributes` (baris `CHANGELOG.md` mati), tambah `CHANGELOG.md`
 - [ ] W0.5 (opsional, perlu konfirmasi owner) prune ~26 branch `origin/dependabot/*`
 
 ## WS1 — Skeleton Laravel 13 (backend rebase)
