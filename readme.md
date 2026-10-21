@@ -47,7 +47,7 @@ password: admin123
  
 ## How to install
 -------------
-1. Clone the repo  ```git clone https://github.com/mshossain110/LaravelDrive.git```
+1. Clone the repo  ```git clone https://github.com/jhedev96/LaravelDrive-App.git```
 2. Move Directory ```cd LarvelDrive```
 3. Install composer ```composer install```
 4. Copy .env file ```cp .env.example .env```
@@ -61,13 +61,13 @@ password: admin123
 
 ## Screen Shorts
 ---
-![My Drive, ](https://github.com/mshossain110/LaravelDrive/blob/develop/doc/screenshort/mydrive-page.png)
+![My Drive, ](https://github.com/jhedev96/LaravelDrive-App/blob/develop/doc/screenshort/mydrive-page.png)
 
-![User page design](https://github.com/mshossain110/LaravelDrive/blob/develop/doc/screenshort/users-page.png)
+![User page design](https://github.com/jhedev96/LaravelDrive-App/blob/develop/doc/screenshort/users-page.png)
 
-![Shared with me](https://github.com/mshossain110/LaravelDrive/blob/develop/doc/screenshort/sharewithme-page.png)
+![Shared with me](https://github.com/jhedev96/LaravelDrive-App/blob/develop/doc/screenshort/sharewithme-page.png)
 
-![Trash page](https://github.com/mshossain110/LaravelDrive/blob/develop/doc/screenshort/trash-pge.png)
+![Trash page](https://github.com/jhedev96/LaravelDrive-App/blob/develop/doc/screenshort/trash-pge.png)
 
 ## License
 ------------
