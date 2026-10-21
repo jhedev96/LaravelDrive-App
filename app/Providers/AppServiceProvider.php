@@ -15,6 +15,8 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use League\Flysystem\Filesystem;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerViewComposers();
         $this->registerRateLimiters();
         $this->configurePassport();
+        $this->registerFlysystemDrivers();
     }
 
     protected function registerPolicies(): void
@@ -80,5 +83,20 @@ class AppServiceProvider extends ServiceProvider
         // keep the previous token lifetimes (1 day access, 2 day refresh)
         Passport::tokensExpireIn(now()->addDays(1));
         Passport::refreshTokensExpireIn(now()->addDays(2));
+    }
+
+    /**
+     * Custom Flysystem 3 adapters are no longer auto-discovered from disk
+     * names (the Laravel 5/6 "extending from config" era is gone), so the
+     * legacy "dropbox" disk gets an explicit adapter registration here.
+     */
+    protected function registerFlysystemDrivers(): void
+    {
+        Storage::extend('dropbox', fn ($app, array $config) => new Filesystem(
+            new \Spatie\FlysystemDropbox\DropboxAdapter(
+                new \Spatie\Dropbox\Client($config['token']),
+                $config['root'] ?? ''
+            )
+        ));
     }
 }
