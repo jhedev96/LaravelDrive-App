@@ -45,7 +45,7 @@
 - [ ] W3.4 Storage driver selection per file (driver modernis PATH/FLOWS di File model/observers)
 - [ ] W3.5 Translation CRUD complements (driver database spatie) + FE pages port v4
 - [ ] W3.6 UploadToCloud job siap S3/DO/Dropbox/FTP (multi-disk safe + tests)
-- [ ] W3.7 **Billing skeleton (baru, D18)**: migrasi `plans` + `users.plan_id/plan_expires_at` + `plan_orders`; seed free (kuota env, default generous) + vip; `User::storageUsed()` + enforcement di upload/folder (error `quota_exceeded`); admin manage plan/status
+- [~] W3.7 **Billing skeleton (baru, D18)**: migrasi `plans` + `users.plan_id/plan_expires_at` + `plan_orders`; seed free (kuota env, default generous) + vip; `User::storageUsed()` + enforcement di upload/folder (error `quota_exceeded`); admin manage plan/status — **migrations/gateways/enforcement/seed/6 test ijo (`4f3170f`); admin manage UI tinggal**
 - [ ] W3.8 **Midtrans QRIS (D18)**: Snap token order, webhook `POST /webhooks/midtrans` (tanpa CSRF + verifikasi signature), update status order + aktivasi plan, admin oversight; gateway interface abstrak (Xendit fallback)
 
 ## WS4 — Bug fixes (inline, dari audit)

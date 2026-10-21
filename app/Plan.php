@@ -17,12 +17,14 @@ class Plan extends Model
         'max_storage',
         'price',
         'currency',
+        'duration_days',
         'active',
     ];
 
     protected $casts = [
         'max_storage' => 'integer',
         'price' => 'integer',
+        'duration_days' => 'integer',
         'active' => 'boolean',
     ];
 

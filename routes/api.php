@@ -62,4 +62,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'index'])->name('translation.translations.index');
     Route::post('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'store'])->name('translation.translations.store');
     Route::put('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'update'])->name('translation.translations.update');
+
+    // billing (D18) — plans catalog + QRIS orders
+    Route::get('billing/plans', [\App\Http\Controllers\API\V1\BillingController::class, 'index'])->name('billing.plans');
+    Route::get('billing/orders', [\App\Http\Controllers\API\V1\BillingController::class, 'orders'])->name('billing.orders.index');
+    Route::post('billing/orders', [\App\Http\Controllers\API\V1\BillingController::class, 'store'])->name('billing.orders.store');
 });
+
+// payment notifications (signature-guarded, no auth)
+Route::post('webhooks/midtrans', \App\Http\Controllers\Billing\MidtransWebhookController::class)->name('webhooks.midtrans');

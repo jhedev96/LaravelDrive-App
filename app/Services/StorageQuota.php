@@ -26,7 +26,7 @@ class StorageQuota
             return null;
         }
 
-        $plan = $user->plan ?: Plan::default();
+        $plan = $this->effectivePlan($user);
 
         if ($plan === null || $plan->max_storage <= 0) {
             // plan missing or "unlimited" configured via 0
@@ -34,6 +34,21 @@ class StorageQuota
         }
 
         return max(0, $plan->max_storage - $this->usedFor($user));
+    }
+
+    /**
+     * Paid plans lapse gracefully: when the expiry has passed the user
+     * falls back to the default (free) plan.
+     */
+    public function effectivePlan(User $user): ?Plan
+    {
+        $plan = $user->plan ?: Plan::default();
+
+        if ($plan && $user->plan_expires_at && $user->plan_expires_at->isPast()) {
+            $plan = Plan::default();
+        }
+
+        return $plan;
     }
 
     /**

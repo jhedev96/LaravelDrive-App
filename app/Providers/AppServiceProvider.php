@@ -23,12 +23,18 @@ use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        // payment rail swap point (D18): midtrans primary, xendit to come
+        $this->app->bind(
+            \App\Services\Billing\Contracts\PaymentGateway::class,
+            function () {
+                return match (config('billing.gateway')) {
+                    'xendit' => throw new \RuntimeException('Xendit gateway is not implemented yet (fallback rail).'),
+                    default => new \App\Services\Billing\MidtransGateway(),
+                };
+            }
+        );
     }
 
     /**

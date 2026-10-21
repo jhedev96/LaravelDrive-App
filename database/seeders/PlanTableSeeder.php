@@ -28,6 +28,7 @@ class PlanTableSeeder extends Seeder
             'max_storage' => $vip['max_storage'] ?? 0,
             'price' => $vip['price'] ?? 0,
             'currency' => $vip['currency'] ?? 'IDR',
+            'duration_days' => $vip['duration_days'] ?? null,
             'active' => true,
         ]);
     }

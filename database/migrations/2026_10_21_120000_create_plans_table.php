@@ -15,9 +15,11 @@ return new class extends Migration
             $table->string('description')->nullable();
             // storage allowance per user, bytes
             $table->unsignedBigInteger('max_storage')->default(0);
-            // one-period price (raw amount, e.g. cents/IDR minor units) — exact meaning is handled by the gateway layer
+            // one-period price (raw amount, e.g. IDR units) — exact meaning is handled by the gateway layer
             $table->unsignedBigInteger('price')->default(0);
             $table->string('currency', 8)->default('IDR');
+            // how long a paid activation lasts; null = never expires (free)
+            $table->unsignedInteger('duration_days')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
         });
