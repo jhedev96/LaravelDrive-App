@@ -61,6 +61,8 @@
 - [ ] W4.10 Job diag: error forbidden kontrak saat permissions read lors of sharing
 - [x] W4.11 **file_size tak pernah disimpan saat upload** (bug usaha lama ditemukan saat menulis test W6.2) — kini di-set pada penghimpunan akhir store + masuk `$fillable` File; kebutuhan `storageUsed()`/kuota jadi hidup
 - [x] W4.12 **Injeksi Request konstruktor => instance usang** di Delete/Copy/Starred/Download controller (test-flow multi-request: `action` selalu NULL → deleteforever turun ke soft-delete secara diam-diam) → semua pindah ke penyuntikan metode; **cursor() + mutasi tabel yang sama** (deleteEntries, copyEntries) → sudah di-materialisasi melalui `get()`
+- [x] W4.13 **Shareable-link update/destroy buta-model**: route param `{id}` gak cocok dgn type-hint `$link` → binding implisit gak jalan → container injek model KOSONG → `$link->save()` jadi INSERT duplikat (hash NOT NULL → 500). Route param diganti `{link}` (nilai path tetap id, kontrak FE aman); ketemu saat nulis `ShareTest`
+- [x] W4.14 User `permissions` (D13 serialize): mutator `setPermissionsAttribute` men-serialize otomatis — wajib kirim **array mentah** dari factory/forms, BUKAN string hasil `serialize()` (double-serialization bikin `hasPermission` selalu false)
 
 ## WS5 — Frontend rebuild (Vite + Vue 3 + Vuetify 4 + Pinia)
 - [ ] W5.1 Vite config (laravel-vite-plugin, entries admin/auth/common, aliases @ac/@auth/@common) + blade `@vite`
@@ -74,7 +76,7 @@
 
 ## WS6 — QA, CI, Docs
 - [ ] W6.1 GH Actions: backend (PHP 8.4?/composer/pint/phpunit sqlite) + frontend (node 22, eslint + vite build)
-- [~] W6.2 Test targets: chunk flow, download (single/zip), shareable public access, shares, passport revoke, translation CRUD — **chunk upload + download single/zip + trash/delete-forever + index + kuota upload ijo (`FileFlowTest` 7 test); shareable/shares/passport-revoke/translation berikutnya**
+- [~] W6.2 Test targets: chunk flow, download (single/zip), shareable public access, shares, passport revoke, translation CRUD — **`FileFlowTest` 7 test + `ShareTest` 7 test ijo (shareable-link CRUD+password hashing+halaman publik `/file/s/{hash}`, shares add-users owner/policy/admin); passport-revoke + translation CRUD berikutnya**
 - [ ] W6.3 README baru (PHP 8.4+, Node 22+, passport:keys + personal client, reverb, npm run dev), screenshot doc preserved — **gotcha: JANGAN pakai `passport:install` berulang setelah migrations di-publish (ia publish ulang oauth migrations w/ stamp baru → duplikat); gunakan `passport:keys` + `passport:client --personal`** — sudah dimasukkan ke catatan setup
 
 ## WS7 — Release

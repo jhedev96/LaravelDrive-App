@@ -53,8 +53,8 @@ Route::middleware('auth:api')->group(function () {
     // shareable links
     Route::get('shareable-links/file/{fileId}', [ShareableLinkController::class, 'getFileShareableLink'])->name('shareable-links.get');
     Route::post('shareable-links/file/{fileId}', [ShareableLinkController::class, 'storeFileShareableLink'])->name('shareable-links.store');
-    Route::put('shareable-links/{id}', [ShareableLinkController::class, 'update'])->name('shareable-links.update');
-    Route::delete('shareable-links/{id}', [ShareableLinkController::class, 'destroy'])->name('shareable-links.destroy');
+    Route::put('shareable-links/{link}', [ShareableLinkController::class, 'update'])->name('shareable-links.update');
+    Route::delete('shareable-links/{link}', [ShareableLinkController::class, 'destroy'])->name('shareable-links.destroy');
 
     // translations
     Route::get('translation/languages', [\App\Http\Controllers\Translation\LanguageController::class, 'index'])->name('translation.languages.index');
