@@ -1,35 +1,26 @@
 <?php
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-class CreateTaggablesTable extends Migration
+return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
+    public function up(): void
     {
         Schema::create('taggables', function (Blueprint $table) {
             $table->integer('tag_id')->index();
             $table->integer('taggable_id')->index();
             $table->string('taggable_type')->index();
+            // legacy: stored as string (kept for data compatibility)
             $table->string('user_id')->index()->nullable();
-            
+
             $table->unique(['tag_id', 'taggable_id', 'user_id', 'taggable_type']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('taggables');
     }
-}
+};

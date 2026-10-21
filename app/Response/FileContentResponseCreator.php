@@ -2,32 +2,15 @@
 
 namespace App\Response;
 
-use Storage;
-use Response;
 use App\File;
+use Illuminate\Support\Facades\Storage;
 
 class FileContentResponseCreator
 {
-    /**
-     * ImageResponse service instance.
-     *
-     * @var ImageResponse
-     */
-    private $imageResponse;
+    private ImageResponse $imageResponse;
 
-    /**
-     * AudioVideoResponse service instance.
-     *
-     * @var AudioVideoResponse
-     */
-    private $audioVideoResponse;
+    private AudioVideoResponse $audioVideoResponse;
 
-    /**
-     * FileContentResponse constructor.
-     *
-     * @param ImageResponse      $imageResponse
-     * @param AudioVideoResponse $audioVideoResponse
-     */
     public function __construct(ImageResponse $imageResponse, AudioVideoResponse $audioVideoResponse)
     {
         $this->imageResponse = $imageResponse;
@@ -35,19 +18,15 @@ class FileContentResponseCreator
     }
 
     /**
-     * Return download or preview response for given file.
-     *
-     * @param File $upload
-     *
-     * @return mixed
+     * Return download or preview response for the given file.
      */
     public function create(File $upload)
     {
-        if (!Storage::drive($upload->driver)->exists($upload->getStoragePath())) {
+        if (! Storage::disk($upload->driver ?: 'local')->exists($upload->getStoragePath())) {
             abort(404);
         }
 
-        list($mime, $type) = $this->getTypeFromModel($upload);
+        [$mime, $type] = $this->getTypeFromModel($upload);
 
         if ($type === 'image') {
             return $this->imageResponse->create($upload);
@@ -58,22 +37,17 @@ class FileContentResponseCreator
         }
     }
 
-    /**
-     * Create a basic response for specified upload content.
-     *
-     * @param File $upload
-     *
-     * @return Response
-     */
     private function createBasicResponse(File $upload)
     {
-        return response(Storage::drive($upload->driver)->get($upload->getStoragePath()), 200, ['Content-Type' => $upload->mime]);
+        return response(
+            Storage::disk($upload->driver ?: 'local')->get($upload->getStoragePath()),
+            200,
+            ['Content-Type' => $upload->mime]
+        );
     }
 
     /**
      * Extract file type from model.
-     *
-     * @param File $fileModel
      *
      * @return array
      */
@@ -82,17 +56,9 @@ class FileContentResponseCreator
         $mime = $fileModel->mime;
         $type = explode('/', $mime)[0];
 
-        return array($mime, $type);
+        return [$mime, $type];
     }
 
-    /**
-     * Should file with given mime be streamed.
-     *
-     * @param string $mime
-     * @param string $type
-     *
-     * @return bool
-     */
     private function shouldStream($mime, $type)
     {
         return $type === 'video' || $type === 'audio' || $mime === 'application/ogg';

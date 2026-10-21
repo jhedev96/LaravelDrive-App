@@ -2,15 +2,12 @@
 
 namespace App\Services\Shares\Traits;
 
-
-use Illuminate\Support\Arr;
-
 trait GeneratesSharePermissions
 {
     /**
-     * Generate permissions for for shared entry.
+     * Generate permissions for a shared entry.
      *
-     * @param array $permissions
+     * @param  int|array  $permissions
      * @return array
      */
     protected function generateSharePermissions($permissions)

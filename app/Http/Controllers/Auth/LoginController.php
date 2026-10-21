@@ -3,28 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
-use Cookie;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+use Illuminate\Validation\ValidationException;
 
-use Illuminate\Support\Facades\DB;
-
-class LoginController extends Controller
+class LoginController extends Controller implements HasMiddleware
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Login Controller
-    |--------------------------------------------------------------------------
-    |
-    | This controller handles authenticating users for the application and
-    | redirecting them to your home screen. The controller uses a trait
-    | to conveniently provide its functionality to your applications.
-    |
-    */
-
-    use AuthenticatesUsers;
-
     /**
      * Where to redirect users after login.
      *
@@ -32,58 +17,15 @@ class LoginController extends Controller
      */
     protected $redirectTo = '/drive';
 
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
-    public function __construct()
+    public static function middleware(): array
     {
-        $this->middleware('guest')->except('logout');
-        $this->middleware('auth')->only('logout');
+        return [
+            new Middleware('guest', except: ['logout']),
+            new Middleware('auth', only: ['logout']),
+        ];
     }
 
     /**
-     * The user has been authenticated.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  mixed  $user
-     * @return mixed
-     */
-    protected function authenticated(Request $request, $user)
-    {
-        $token = $user->createToken('Laravel Personal Access Client')->accessToken;
-        // Cookie::queue(Cookie::make('access_token', $token, 24*60));
-        return ['success' => true, 'redirectTo' => $this->redirectPath(), 'token' => $token ];
-    }
-
-        /**
-     * Log the user out of the application.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function logout(Request $request)
-    {
-        $user = Auth::user();
-        
-       
-        $user->tokens()->delete();
-        // Tell Laravel to forget this cookie
-        // $cookie = Cookie::forget($rememberMeCookie);
-
-        \Cookie::queue(\Cookie::forget('laravel_session'));
-        \Cookie::queue(\Cookie::forget('laravel_token'));
-        \Session::flush();
-
-        $this->guard()->logout();
-
-        $request->session()->invalidate();
-
-        return response()->json(null, 204);
-    }
-
-        /**
      * Show the application's login form.
      *
      * @return \Illuminate\Http\Response
@@ -93,5 +35,73 @@ class LoginController extends Controller
         return view('auth.login');
     }
 
- 
+    /**
+     * Handle a login request to the application.
+     */
+    public function login(Request $request)
+    {
+        $field = filter_var($request->input('email'), FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
+
+        $request->validate([
+            'email' => 'required|min:1',
+            'password' => 'required|min:6',
+            'remember' => 'nullable|boolean',
+        ], [], [
+            'email' => $field,
+            'password' => 'password',
+        ]);
+
+        $credentials = [
+            $field => $request->input('email'),
+            'password' => $request->input('password'),
+        ];
+
+        $remember = $request->boolean('remember');
+
+        if (auth()->attempt($credentials, $remember)) {
+            $user = auth()->user();
+
+            // update the last login timestamp and ip
+            $user->timestamps = false;
+            $user->last_loged_in = now();
+            $user->ip = $request->ip();
+            $user->save();
+            $user->timestamps = true;
+
+            $token = $user->createToken('Laravel Personal Access Client')->accessToken;
+
+            return [
+                'success' => true,
+                'redirectTo' => $this->redirectTo,
+                'token' => $token,
+            ];
+        }
+
+        throw ValidationException::withMessages([
+            $field => [__('auth.failed')],
+        ]);
+    }
+
+    /**
+     * Log the user out of the application.
+     */
+    public function logout(Request $request)
+    {
+        $user = auth()->user();
+
+        // revoke all previously issued API tokens
+        if ($user) {
+            $user->tokens()->delete();
+        }
+
+        auth()->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        \Cookie::queue(\Cookie::forget('laravel_session'));
+        \Cookie::queue(\Cookie::forget('laravel_token'));
+
+        return response()->json(null, 204);
+    }
 }

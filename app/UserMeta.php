@@ -6,33 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserMeta extends Model
 {
-     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
+    protected $table = 'user_metas';
+
     protected $fillable = [
         'user_id',
         'key',
-        'value'
+        'value',
     ];
 
-        /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
     protected $hidden = [
-        'hide'
+        'hide',
     ];
 
-    public function setValueAttribute( $value ) {
-        if ( ! empty($value) ) {
+    public function setValueAttribute($value)
+    {
+        if (! empty($value)) {
             $this->attributes['value'] = maybe_serialize($value);
         }
     }
 
-    public function getValueAttribute( $value ) {
+    public function getValueAttribute($value)
+    {
         return maybe_unserialize($value);
     }
 
@@ -41,6 +35,6 @@ class UserMeta extends Model
      */
     public function user()
     {
-        return $this->belongsTo('App\User');
+        return $this->belongsTo(User::class);
     }
 }

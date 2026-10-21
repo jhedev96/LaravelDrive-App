@@ -2,22 +2,20 @@
 
 namespace App\Services\Shares;
 
-use DB;
-use Illuminate\Support\Collection;
-use Common\Files\Traits\LoadsAllChildEntries;
+use Illuminate\Support\Facades\DB;
 
 class DetachUsersFromEntries
 {
     /**
      * Detach (non owner) users from specified entries.
      *
-     * @param array|Collection $entryIds
-     * @param array|Collection $userIds
+     * @param  array|\Illuminate\Support\Collection  $entryIds
+     * @param  array|\Illuminate\Support\Collection  $userIds
      */
     public function execute($entryIds, $userIds)
     {
-        DB::table('user_file_entry')
-            ->whereIn('file_entry_id', $entryIds)
+        DB::table('file_user')
+            ->whereIn('file_id', $entryIds)
             ->whereIn('user_id', $userIds)
             ->where('owner', false)
             ->delete();

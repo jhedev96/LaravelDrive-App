@@ -2,36 +2,40 @@
 
 namespace App\Http\Controllers\Translation;
 
+use App\Http\Controllers\API\V1\ApiController;
+use App\Language;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Resources\Json\JsonResource;
-use JoeDixon\Translation\Drivers\Translation;
-use JoeDixon\Translation\Http\Requests\LanguageRequest;
+use Illuminate\Validation\Rule;
 
-class LanguageController extends Controller
+class LanguageController extends ApiController
 {
-    private $translation;
-
-    public function __construct(Translation $translation)
+    /**
+     * List registered languages: map of name => locale, matching the old
+     * translation store contract.
+     */
+    public function index()
     {
-        $this->translation = $translation;
+        $languages = Language::orderBy('id')->get()
+            ->mapWithKeys(fn (Language $l) => [$l->name => $l->locale]);
+
+        return new \Illuminate\Http\Resources\Json\JsonResource($languages);
     }
 
-    public function index(Request $request)
+    /**
+     * Add a new language.
+     */
+    public function store(Request $request)
     {
-        $languages = $this->translation->allLanguages();
+        $request->validate([
+            'locale' => [
+                'required', 'string', 'max:12',
+                Rule::unique('languages', 'locale'),
+            ],
+            'name' => 'required|string|max:40',
+        ]);
 
-        return new JsonResource($languages);
-    }
+        $language = Language::create($request->only(['locale', 'name']));
 
-    public function create()
-    {
-        return view('translation::languages.create');
-    }
-
-    public function store(LanguageRequest $request)
-    {
-        $this->translation->addLanguage($request->locale, $request->name);
-        return response()->json(['success' => true,]);
+        return new \Illuminate\Http\Resources\Json\JsonResource($language);
     }
 }

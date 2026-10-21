@@ -2,73 +2,38 @@
 
 namespace App\Http\Controllers\API\V1;
 
-use Illuminate\Http\Request;
-use App\Repositories\UserRepository;
 use App\Http\Requests\UserRequest;
-use Carbon\Carbon;
+use App\Repositories\UserRepository;
 use App\User;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserController extends ApiController
 {
-    protected $user;
+    protected UserRepository $user;
 
-
-    public function __construct ( UserRepository $user ) {
+    public function __construct(UserRepository $user)
+    {
         $this->user = $user;
-        $this->middleware('auth');
     }
 
-    public function index () {
+    public function index()
+    {
         $this->authorize('view', User::class);
-    	return JsonResource::collection($this->user->page());
+
+        return JsonResource::collection($this->user->page());
     }
 
-    public function show ( $id ) {
+    public function show($id)
+    {
         $this->authorize('view', User::class);
-    	return new JsonResource($this->user->getById($id));
+
+        return new JsonResource($this->user->getById($id));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\UserRequest  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store ( UserRequest $request) {
+    public function store(UserRequest $request)
+    {
         $this->authorize('create', User::class);
-        $validated = $request->validated();
-
-        $data = $request->only([
-            'firstname',
-            'lastname',
-            'name',
-            'email',
-            'password',
-            'role',
-            'avatar',
-            'permissions'
-        ]);
-        
-        $data['ip'] = $request->ip();
-        $data['last_loged_in'] =  Carbon::now();
-
-        $user = $this->user->store($data);
-
-       	return new JsonResource($user);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\UserRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update ( UserRequest $request, $id ) {
-        $this->authorize('update', User::class);
-
-        $validated = $request->validated();
 
         $data = $request->only([
             'firstname',
@@ -79,81 +44,87 @@ class UserController extends ApiController
             'role',
             'avatar',
             'permissions',
-            'status'
         ]);
 
-    	$user = $this->user->update( $id, $data);
+        $data['ip'] = $request->ip();
 
-    	return new JsonResource($user);
+        return new JsonResource($this->user->store($data));
+    }
+
+    public function update(UserRequest $request, $id)
+    {
+        $this->authorize('update', User::class);
+
+        $data = $request->only([
+            'firstname',
+            'lastname',
+            'name',
+            'email',
+            'password',
+            'role',
+            'avatar',
+            'permissions',
+            'status',
+        ]);
+
+        return new JsonResource($this->user->update($id, $data));
     }
 
     /**
-     * Update User Status By User ID
-     *
-     * @param $id
-     * @param Request $request
-     * @return \App\User
+     * Update user status by user id.
      */
     public function status($id, Request $request)
     {
         $this->authorize('update', User::class);
-        $input = $request->all();
 
-        if (auth()->user()->id == $id ) {
-            return $this->errorUnauthorized('You can\'t change status for yourself and other Administrators!');
+        if (auth()->user()->id == $id) {
+            return $this->errorUnauthorized("You can't change status for yourself and other Administrators!");
         }
 
-        $this->user->update($id, $input);
+        $this->user->update($id, $request->all());
 
         return $this->noContent();
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy ( $id ) {
+    public function destroy($id)
+    {
         $this->authorize('delete', User::class);
-        if (auth()->user()->id == $id ) {
-            return $this->errorUnauthorized('You can\'t delete for yourself and other Administrators!');
+
+        if (auth()->user()->id == $id) {
+            return $this->errorUnauthorized("You can't delete for yourself and other Administrators!");
         }
 
         $this->user->destroy($id);
 
-        return $this->respondWithMessage("Successfully deleted");
+        return $this->respondWithMessage('Successfully deleted');
     }
-    
-    
+
     /**
      * Delete multiple users.
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function deleteMultiple(Request $request )
+    public function deleteMultiple(Request $request)
     {
         $this->authorize('delete', User::class);
 
         $this->validate($request, [
-            'ids' => 'required|array|min:1'
+            'ids' => 'required|array|min:1',
         ]);
 
-        $this->user->deleteMultiple($request->get('ids'));
+        $this->user->deleteMultiple($request->input('ids'));
 
-        return $this->respondWithMessage("Successfully deleted");
+        return $this->respondWithMessage('Successfully deleted');
     }
 
-    public function search (Request $request) {
+    public function search(Request $request)
+    {
         $this->authorize('view', User::class);
-        $query = $request->get('s');
-        
+
         $this->validate($request, [
-            's' => 'required|string|min:1'
+            's' => 'required|string|min:1',
         ]);
 
-        $users = $this->user->searchUser($query);
-        
-        return JsonResource::collection($users);
+        $query = $request->input('s');
+
+        return JsonResource::collection($this->user->searchUser($query));
     }
 }

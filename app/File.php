@@ -2,19 +2,20 @@
 
 namespace App;
 
-use App\User;
-use App\Traits\HashesId;
-use Illuminate\Support\Arr;
-use App\Traits\HandlesPaths;
 use App\Observers\FileObserver;
+use App\Traits\HandlesPaths;
+use App\Traits\HashesId;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
+#[ObservedBy(FileObserver::class)]
 class File extends Model
 {
     use HandlesPaths, HashesId, SoftDeletes;
-    
+
     protected $fillable = [
         'name',
         'description',
@@ -34,48 +35,35 @@ class File extends Model
     protected $casts = [
         'id' => 'integer',
         'file_size' => 'integer',
-        'user_id' => 'integer',
         'parent_id' => 'integer',
         'meta' => 'array',
-        'permissions' => 'array',
     ];
 
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
     protected $hidden = [
         'meta',
-        'file_name'
+        'file_name',
     ];
 
-    /**
-     * the accessor that should append with response.
-     *
-     * @var array
-     */
     protected $appends = [
-        // 'sizes',
         'hash',
-        'stared'
+        'stared',
     ];
 
-
     /**
-     * Bootstrap any application services.
-     *
-     * @return void
+     * Attach the "stared" tag subselect (and the folder-type filter, coming via scopeStared)
+     * to every query made through this model, matching the previous newQuery() behavior.
      */
-    public static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-        File::observe(FileObserver::class);
-    }
-
-    public function newQuery( $except_deleted = true )
-    {
-        return parent::newQuery( $except_deleted )->stared();
+        static::addGlobalScope('stared', function (Builder $query) {
+            $query->addSelect(['stared' => function ($query) {
+                $query->select('name')
+                    ->from('tags')
+                    ->join('taggables', 'tags.id', '=', 'taggables.tag_id')
+                    ->whereColumn('taggables.taggable_id', 'files.id')
+                    ->limit(1);
+            }]);
+        });
     }
 
     /**
@@ -83,7 +71,7 @@ class File extends Model
      */
     public function children()
     {
-        return $this->hasMany(static::class, 'folder_id');
+        return $this->hasMany(self::class, 'parent_id');
     }
 
     /**
@@ -91,77 +79,78 @@ class File extends Model
      */
     public function parent()
     {
-        return $this->belongsTo(static::class, 'folder_id');
+        return $this->belongsTo(self::class, 'parent_id');
     }
-
 
     public function getStoragePath()
     {
         return "$this->file_name/$this->name";
     }
-     /**
+
+    /**
      * Get path of specified entry.
      *
-     * @param int $id
+     * @param  int  $id
      * @return string
      */
     public function findPath($id)
     {
-        $entry = $this->find($id, ['path']);
+        $entry = self::find($id, ['path']);
+
         return $entry ? $entry->getOriginal('path') : '';
     }
 
     /**
      * Return file entry name with extension.
-     * @return string
      */
-    public function getNameWithExtension() {
-        if ( ! $this->exists) return '';
+    public function getNameWithExtension()
+    {
+        if (! $this->exists) {
+            return '';
+        }
 
         $extension = pathinfo($this->name, PATHINFO_EXTENSION);
 
-        if ( ! $extension) {
-            return $this->name .'.'. $this->extension;
+        if (! $extension) {
+            return $this->name.'.'.$this->extension;
         }
 
         return $this->name;
     }
 
-    /**
-     * Get all of the tags for the post.
-     */
     public function tags()
     {
-        return $this->morphToMany('App\Tag', 'taggable');
+        return $this->morphToMany(Tag::class, 'taggable');
     }
 
     public function getStaredAttribute()
     {
-        return !empty($this->attributes['stared']);
+        return ! empty($this->attributes['stared']);
     }
 
     public function scopeStared($query)
     {
-
         return $query->addSelect(['stared' => function ($query) {
             $query->select('name')
-            ->from('tags')
-            ->join('taggables', 'tags.id', '=', 'taggables.tag_id')
-            ->whereColumn('taggables.taggable_id', 'files.id')
-            ->limit(1);
+                ->from('tags')
+                ->join('taggables', 'tags.id', '=', 'taggables.tag_id')
+                ->whereColumn('taggables.taggable_id', 'files.id')
+                ->limit(1);
         }]);
     }
 
-    public function sharedWith () {
-        return $this->belongsToMany('App\User', 'file_user', 'file_id', 'user_id')->withPivot(['permissions', 'created_at', 'updated_at', 'owner']);
+    public function sharedWith()
+    {
+        return $this->belongsToMany(User::class, 'file_user', 'file_id', 'user_id')
+            ->withPivot(['permissions', 'created_at', 'updated_at', 'owner']);
     }
 
     public function uploader()
     {
-        return $this->belongsTo('App\User', 'uploaded_by');
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-     /*
+    /*
     |--------------------------------------------------------------------------
     | FUNCTIONS
     |--------------------------------------------------------------------------
@@ -169,23 +158,26 @@ class File extends Model
 
     public function setPermission($permission, $value)
     {
-        $permissions = $this->meta['permissions'];
+        $meta = $this->meta ?? [];
+        $permissions = $meta['permissions'] ?? [];
         $permissions[$permission] = $value;
-
+        $meta['permissions'] = $permissions;
+        $this->meta = $meta;
         $this->save();
     }
 
     public function getPermission($permission = null)
     {
-        $permissions = $this->meta['permissions']?:[];
+        $permissions = $this->meta['permissions'] ?? [];
 
         if ($permission !== null) {
             if (array_key_exists($permission, $permissions)) {
                 return $permissions[$permission];
-            } else {
-                return false;
             }
+
+            return false;
         }
+
         return $permissions;
     }
 
@@ -196,29 +188,31 @@ class File extends Model
 
     public function setImageSize($size)
     {
-        $sizes = $this->meta['sizes'];
-        $sizes[$size] = false;
-
+        $meta = $this->meta ?? [];
+        $sizes = $meta['sizes'] ?? [];
+        $sizes[$size] = true;
+        $meta['sizes'] = $sizes;
+        $this->meta = $meta;
         $this->save();
     }
 
     public function getImageSizes()
     {
-        return $this->meta['sizes'];
+        return $this->meta['sizes'] ?? [];
     }
 
     public function updatePublicPaths($driver = null)
     {
-        if ($this->driver !== $driver) {
+        if ($driver) {
             $this->driver = $driver;
         }
 
         if ($this->hasPermission('public')) {
-            $this->public_path = Storage::disk($this->driver)->url($this->getStoragePath());
+            $this->public_path = Storage::disk($this->driver ?: 'local')->url($this->getStoragePath());
         } else {
             $this->public_path = Storage::disk('local')->url($this->getStoragePath());
         }
+
         $this->save();
     }
-
 }

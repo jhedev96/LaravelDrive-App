@@ -6,22 +6,32 @@ use Illuminate\Database\Eloquent\Model;
 
 class Role extends Model
 {
-    
     protected $fillable = [
         'name',
         'description',
         'permissions',
-        'status'
+        'status',
     ];
 
-    public function setPermissionsAttribute( $value ) {
-        if ( ! empty($value) ) {
-            $this->attributes['permissions'] = serialize( $value );
+    protected $casts = [
+        'id' => 'integer',
+        'status' => 'integer',
+    ];
+
+    public function setPermissionsAttribute($value)
+    {
+        if (! empty($value)) {
+            $this->attributes['permissions'] = serialize($value);
         }
     }
 
-    public function getPermissionsAttribute( $value ) {
-        return unserialize( $value );
+    public function getPermissionsAttribute($value)
+    {
+        if ($value && is_serialized($value)) {
+            return (array) @unserialize($value);
+        }
+
+        return [];
     }
 
     /**
@@ -29,6 +39,6 @@ class Role extends Model
      */
     public function users()
     {
-        return $this->belongsToMany('App\User');
+        return $this->belongsToMany(User::class);
     }
 }

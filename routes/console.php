@@ -1,18 +1,13 @@
 <?php
 
 use Illuminate\Foundation\Inspiring;
-
-/*
-|--------------------------------------------------------------------------
-| Console Routes
-|--------------------------------------------------------------------------
-|
-| This file is where you may define all of your Closure based console
-| commands. Each Closure is bound to a command instance allowing a
-| simple approach to interacting with each command's IO methods.
-|
-*/
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
-})->describe('Display an inspiring quote');
+})->purpose('Display an inspiring quote');
+
+// purge abandoned chunk uploads every hour (template :25, matching the
+// chunk-upload config's unlink-timestamps behaviour)
+Schedule::command('uploads:clear')->cron('25 * * * *');

@@ -2,96 +2,42 @@
 
 namespace App;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Observers\FolderObserver;
 use App\Traits\HandlesPaths;
 use App\Traits\HashesId;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
-class Folder extends Model
+#[ObservedBy(FolderObserver::class)]
+class Folder extends File
 {
-    use HandlesPaths, HashesId;
-
     protected $table = 'files';
-
-    
-    protected $fillable = [
-        'name',
-        'description',
-        'path',
-        'file_name',
-        'extension',
-        'mime',
-        'type',
-        'public_path',
-        'parent_id',
-        'driver',
-        'driver_data',
-        'uploaded_by',
-        'meta',
-    ];
-
-
-    protected $casts = [
-        'id' => 'integer',
-        'file_size' => 'integer',
-        'parent_id' => 'integer'
-    ];
 
     protected $attributes = ['type' => 'folder'];
 
-    protected $appends = [
-        'hash',
-        'stared'
-    ];
-
-    public function newQuery( $except_deleted = true )
-    {
-        return parent::newQuery( $except_deleted )->where( 'type', '=', 'folder' )->stared();
-    }
     /**
-     * Bootstrap any application services.
-     *
-     * @return void
+     * Filter to folders and attach the "stared" tag subselect,
+     * matching the previous newQuery() override behavior.
      */
-    public static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-        Folder::observe(FolderObserver::class);
+        parent::booted();
+
+        static::addGlobalScope('fsType', function (Builder $query) {
+            $query->where('type', '=', 'folder');
+        });
     }
+
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function children()
     {
-        return $this->hasMany(static::class, 'parent_id')->withoutGlobalScope('fsType');
-    }
-
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function parent()
-    {
-        return $this->belongsTo(static::class, 'parent_id');
+        return $this->hasMany(self::class, 'parent_id')->withoutGlobalScope('fsType');
     }
 
     public function tags()
     {
-        return $this->belongsToMany('App\Tag', 'taggables', 'taggable_id', 'tag_id');
-    }
-
-    public function getStaredAttribute()
-    {
-        return !empty($this->attributes['stared']);
-    }
-
-    public function scopeStared($query)
-    {
-        return $query->addSelect(['stared' => function ($query) {
-            $query->select('name')
-            ->from('tags')
-            ->join('taggables', 'tags.id', '=', 'taggables.tag_id')
-            ->whereColumn('taggables.taggable_id', 'files.id')
-            ->limit(1);
-        }]);
+        return $this->belongsToMany(Tag::class, 'taggables', 'taggable_id', 'tag_id');
     }
 }

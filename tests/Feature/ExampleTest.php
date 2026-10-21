@@ -3,19 +3,21 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class ExampleTest extends TestCase
 {
-    /**
-     * A basic test example.
-     *
-     * @return void
-     */
-    public function testBasicTest()
+    public function test_the_root_redirects_to_the_drive_spa(): void
     {
-        $response = $this->get('/');
+        $this->get('/')->assertRedirect('/drive');
+    }
 
-        $response->assertStatus(200);
+    public function test_the_login_page_renders(): void
+    {
+        $this->get('/login')->assertOk();
+    }
+
+    public function test_the_health_route_works(): void
+    {
+        $this->get('/up')->assertOk();
     }
 }

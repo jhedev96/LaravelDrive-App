@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ApiController extends Controller
 {
-    /**
-     * @var int $statusCode
-     */
-    protected $statusCode = 200;
+    use AuthorizesRequests, ValidatesRequests;
+
+    protected int $statusCode = 200;
 
     const CODE_WRONG_ARGS = 'GEN-FUBARGS';
     const CODE_NOT_FOUND = 'GEN-LIKETHEWIND';
@@ -19,23 +20,11 @@ class ApiController extends Controller
     const CODE_FORBIDDEN = 'GEN-GTFO';
     const CODE_INVALID_MIME_TYPE = 'GEN-UMWUT';
 
-
-    /**
-     * Get the status code.
-     *
-     * @return int $statusCode
-     */
-    public function getStatusCode()
+    public function getStatusCode(): int
     {
         return $this->statusCode;
     }
 
-    /**
-     * Set the status code.
-     *
-     * @param $statusCode
-     * @return $this
-     */
     public function setStatusCode($statusCode)
     {
         $this->statusCode = $statusCode;
@@ -44,9 +33,7 @@ class ApiController extends Controller
     }
 
     /**
-     * Repond a no content response.
-     * 
-     * @return response
+     * Respond a no content response.
      */
     public function noContent()
     {
@@ -54,147 +41,85 @@ class ApiController extends Controller
     }
 
     /**
-     * Respond the item data.
-     *
-     * @param $item
-     * @param $callback
-     * @return mixed
+     * Generic success holder used by a few legacy controllers.
      */
-    public function respondWithItem($item)
+    public function success($data = [])
     {
-        return New JsonResource($item);
+        return $this->setStatusCode(200)
+            ->respondWithArray(array_merge(['success' => true], $data));
     }
 
-    /**
-     * Respond the collection data.
-     *
-     * @param $collection
-     * @param $callback
-     * @return mixed
-     */
+    public function respondWithItem($item)
+    {
+        return new JsonResource($item);
+    }
+
     public function respondWithCollection($collection)
     {
         return JsonResource::collection($collection);
     }
 
-    /**
-     *  Respond the collection data with pagination.
-     *
-     * @param $paginator
-     * @param $callback
-     * @return mixed
-     */
     public function respondWithPaginator($collection)
     {
         return JsonResource::collection($collection);
     }
 
-    /**
-     * Respond the data.
-     *
-     * @param array $array
-     * @param array $headers
-     * @return mixed
-     */
     public function respondWithArray(array $array, array $headers = [])
     {
         return response()->json($array, $this->statusCode, $headers);
     }
 
-    /**
-     * Respond the message.
-     * 
-     * @param  string $message
-     * @return json
-     */
-
-    public function respondWithMessage ($message) {
+    public function respondWithMessage($message)
+    {
         return $this->setStatusCode(200)
             ->respondWithArray([
-                    'message' => $message,
-                ]);
+                'message' => $message,
+            ]);
     }
 
-    /**
-     * Respond the error message.
-     * 
-     * @param  string $message
-     * @param  string $errorCode
-     * @return json
-     */
     protected function respondWithError($message, $errorCode, $errors = [])
     {
-        if ($this->statusCode === 200) {
+        if (app()->isProduction() && $this->statusCode === 200) {
             trigger_error(
-                "You better have a really good reason for erroring on a 200...",
+                'You better have a really good reason for erroring on a 200...',
                 E_USER_WARNING
             );
         }
 
         return $this->respondWithArray([
-            'errors'  => $errors,
-            'code'    => $errorCode,
+            'errors' => $errors,
+            'code' => $errorCode,
             'message' => $message,
         ]);
     }
 
-    /**
-     * Respond the error of 'Forbidden'
-     * 
-     * @param  string $message
-     * @return json
-     */
     public function errorForbidden($message = 'Forbidden', $errors = [])
     {
-        return $this->setStatusCode(500)
-                    ->respondWithError($message, self::CODE_FORBIDDEN, $errors);
+        return $this->setStatusCode(403)
+            ->respondWithError($message, self::CODE_FORBIDDEN, $errors);
     }
 
-    /**
-     * Respond the error of 'Internal Error'.
-     * 
-     * @param  string $message
-     * @return json
-     */
     public function errorInternalError($message = 'Internal Error', $errors = [])
     {
         return $this->setStatusCode(500)
-                    ->respondWithError($message, self::CODE_INTERNAL_ERROR, $errors);
+            ->respondWithError($message, self::CODE_INTERNAL_ERROR, $errors);
     }
 
-    /**
-     * Respond the error of 'Resource Not Found'
-     * 
-     * @param  string $message
-     * @return json
-     */
     public function errorNotFound($message = 'Resource Not Found', $errors = [])
     {
         return $this->setStatusCode(404)
-                    ->respondWithError($message, self::CODE_NOT_FOUND, $errors);
+            ->respondWithError($message, self::CODE_NOT_FOUND, $errors);
     }
 
-    /**
-     * Respond the error of 'Unauthorized'.
-     * 
-     * @param  string $message
-     * @return json
-     */
     public function errorUnauthorized($message = 'Unauthorized', $errors = [])
     {
         return $this->setStatusCode(401)
-                    ->respondWithError($message, self::CODE_UNAUTHORIZED, $errors);
+            ->respondWithError($message, self::CODE_UNAUTHORIZED, $errors);
     }
 
-    /**
-     * Respond the error of 'Wrong Arguments'.
-     * 
-     * @param  string $message
-     * @return json
-     */
     public function errorWrongArgs($message = 'Wrong Arguments', $errors = [])
     {
         return $this->setStatusCode(400)
-                    ->respondWithError($message, self::CODE_WRONG_ARGS, $errors);
+            ->respondWithError($message, self::CODE_WRONG_ARGS, $errors);
     }
 }

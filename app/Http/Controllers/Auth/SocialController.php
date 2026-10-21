@@ -6,43 +6,33 @@ use App\Http\Controllers\Controller;
 use App\User;
 use App\UserMeta;
 use App\Traits\CaptureIpTrait;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Input;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
-use Carbon\Carbon;
 
 class SocialController extends Controller
 {
-
     /**
-     * Gets the social redirect.
-     *
-     * @param string $provider The provider
-     *
-     * @return Redirect
+     * Redirect to the OAuth provider.
      */
     public function getSocialRedirect($provider)
     {
         $providerKey = config('services.'.$provider);
 
-        if (empty($providerKey) || empty($providerKey['client_id']) || empty($providerKey['client_secret']) ) {
+        if (empty($providerKey) || empty($providerKey['client_id']) || empty($providerKey['client_secret'])) {
             return redirect()->to('login')
-                ->with('error', "$provider dose not defined!!");
+                ->with('error', "$provider is not configured yet!!");
         }
 
         return Socialite::driver($provider)->redirect();
     }
 
     /**
-     * Gets the social handle.
-     *
-     * @param string $provider The provider
-     *
-     * @return Redirect
+     * Handle the callback from the OAuth provider.
      */
-    public function getSocialHandle($provider)
+    public function getSocialHandle($provider, \Illuminate\Http\Request $request)
     {
-        if (Input::get('denied') != '') {
+        if ($request->input('denied')) {
             return redirect()->to('login')
                 ->with('status', 'danger')
                 ->with('message', "$provider denied");
@@ -52,112 +42,88 @@ class SocialController extends Controller
 
         $socialUser = null;
 
-        // Check if email is already registered
-        $userCheck = User::where('email', '=', $socialUserObject->email)->first();
+        $email = $socialUserObject->email ?: 'missing'.Str::random(10).'@'.Str::random(10).'.example.org';
 
-        $email = $socialUserObject->email;
+        // check if email is already registered
+        $userCheck = User::withTrashed()->where('email', '=', $email)->first();
 
-        if (!$socialUserObject->email) {
-            $email = 'missing'.\Str::random(10).'@'.\Str::random(10).'.example.org';
-        }
-
-        if (empty($userCheck)) {
-            $sameSocialId = UserMeta::where('value', '=', $socialUserObject->id)
-                ->where('key', '=', $provider)
+        if (! $userCheck) {
+            $sameSocialId = UserMeta::where('key', '=', $provider)
+                ->where('value', '=', (string) $socialUserObject->id)
                 ->first();
 
-            if (empty($sameSocialId)) {
+            if (! $sameSocialId) {
                 $ipAddress = new CaptureIpTrait();
-                
-                
-                $fullname = explode(' ', $socialUserObject->name);
-                if (count($fullname) == 1) {
+
+                $fullname = explode(' ', (string) $socialUserObject->name);
+                if (count($fullname) === 1) {
                     $fullname[1] = '';
                 }
-                $username = $socialUserObject->nickname;
 
+                $username = $socialUserObject->nickname;
                 if ($username == null) {
+                    $username = '';
                     foreach ($fullname as $name) {
                         $username .= $name;
                     }
                 }
 
-                // Check to make sure username does not already exist in DB before recording
+                // make sure username does not already exist in DB
                 $username = $this->checkUserName($username, $email);
-                info($socialUserObject->getAvatar());
 
                 $user = User::create([
-                    'name'              => $username,
-                    'firstname'         => $fullname[0],
-                    'lastname'          => $fullname[1],
-                    'email'             => $email,
-                    'password'          => bcrypt(\Str::random(40)),
-                    'avatar'            => $socialUserObject->getAvatar(),
-                    'status'            => User::$status[1],
+                    'name' => $username,
+                    'firstname' => $fullname[0],
+                    'lastname' => $fullname[1] ?? '',
+                    'email' => $email,
+                    'password' => Str::random(40), // hashed via model cast
+                    'avatar' => $socialUserObject->getAvatar(),
+                    'status' => 1,
                     'email_verified_at' => Carbon::now(),
-                    'ip'                => $ipAddress->getClientIp()
-
+                    'ip' => $ipAddress->getClientIp(),
                 ]);
 
                 $socialUser = $user;
+
+                // record the provider relation so future logins link back correctly
+                $socialUser->meta()->create([
+                    'key' => $provider,
+                    'value' => $socialUserObject->id,
+                    'hide' => true,
+                ]);
             } else {
                 $socialUser = $sameSocialId->user;
             }
 
             auth()->login($socialUser, true);
 
-            return redirect()->to('drive');
+            return redirect()->intended('/drive');
         }
 
-        $socialUser = $userCheck;
+        auth()->login($userCheck, true);
 
-        auth()->login($socialUser, true);
-
-        return redirect()->to('drive');
+        return redirect()->intended('/drive');
     }
 
     /**
-     * Check if username against database and return valid username.
-     * If username is not in the DB return the username
-     * else generate, check, and return the username.
-     *
-     * @param string $username
-     * @param string $email
-     *
-     * @return string
+     * Check username against database and return valid username.
      */
     public function checkUserName($username, $email)
     {
-        $userNameCheck = User::where('name', '=', $username)->first();
+        $userNameCheck = User::withTrashed()->where('name', '=', $username)->first();
 
         if ($userNameCheck) {
-            $i = 1;
             do {
                 $username = $this->generateUserName($username);
-                $newCheck = User::where('name', '=', $username)->first();
-
-                if ($newCheck == null) {
-                    $newCheck = 0;
-                } else {
-                    $newCheck = count($newCheck);
-                }
-            } while ($newCheck != 0);
+                $newCheck = User::withTrashed()->where('name', '=', $username)->first();
+            } while ($newCheck != null);
         }
 
         return $username;
     }
 
-    /**
-     * Generate Username.
-     *
-     * @param string $username
-     *
-     * @return string
-     */
     public function generateUserName($username)
     {
-        return $username.'_'.\Str::random(10);
+        return $username.'_'.Str::random(10);
     }
-
-    
 }

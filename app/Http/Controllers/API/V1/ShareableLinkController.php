@@ -2,84 +2,76 @@
 
 namespace App\Http\Controllers\API\V1;
 
-use Exception;
 use App\ShareableLink;
-use Illuminate\Container\EntryNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class ShareableLinkController extends ApiController
 {
-
-
-    public function getFileShareableLink (Request $request, $fileId)
+    public function getFileShareableLink(Request $request, $fileId)
     {
-        $link = ShareableLink::firstWhere('file_id',$fileId);
+        $link = ShareableLink::where('file_id', $fileId)->first();
 
-        if (!$link) {
-            throw new EntryNotFoundException("Link Not found!!", 404);
+        if (! $link) {
+            return $this->errorNotFound('Link not found!');
         }
 
         return $this->shareableLink($link);
     }
 
-    public function storeFileShareableLink (Request $request, $fileId)
+    public function storeFileShareableLink(Request $request, $fileId)
     {
-        $link = ShareableLink::firstOrNew(['file_id'=> $fileId]);
+        $link = ShareableLink::firstOrNew(['file_id' => $fileId]);
 
-        $params = $this->request->all();
+        $params = $request->all();
         $params['user_id'] = $request->user()->id;
         $params['file_id'] = $fileId;
-        $params['hash'] = $link->hash ? $link->hash: \Str::random(30);
+        $params['hash'] = $link->hash ?: Str::random(30);
+
         if ($request->has('password')) {
-            $params['password'] = Hash::make($request->get('password'));
+            $params['password'] = $request->password ? Hash::make($request->password) : null;
         }
-        
+
         $link->fill($params);
         $link->save();
 
         return $this->shareableLink($link);
-
     }
 
-
-    protected function shareableLink(ShareableLink $link, $withfile = false)
+    protected function shareableLink(ShareableLink $link, $withFile = false)
     {
-        if ($withfile) {
+        if ($withFile) {
             $link->load('file', 'file.children', 'file.uploader');
         }
 
-    	return new JsonResource($link);
+        return new JsonResource($link);
     }
 
-    /**
-     * @param int|string $idOrHash
-     * 
-     */
     public function show(Request $request, $fileId)
     {
-        $link = ShareableLink::firstOrFail('file_id', $fileId);
+        $link = ShareableLink::where('file_id', $fileId)->firstOrFail();
 
-        if ( ! $link || ! $link->file || $link->file->trashed()) abort(404);
+        if (! $link || ! $link->file || $link->file->trashed()) {
+            abort(404);
+        }
 
-        if ($this->request->get('withFile')) {
+        if ($request->input('withFile')) {
             $link->load('file.children', 'file.uploader');
         }
 
-    	return new JsonResource($link);
+        return new JsonResource($link);
     }
 
-    
-
-    /**
-     * @param int $id
-     * 
-     */
     public function update(Request $request, ShareableLink $link)
     {
         $params = $request->all();
         $params['user_id'] = $request->user()->id;
+
+        if ($request->has('password')) {
+            $params['password'] = $request->password ? Hash::make($request->password) : null;
+        }
 
         $link->fill($params);
         $link->save();
@@ -87,24 +79,23 @@ class ShareableLinkController extends ApiController
         return new JsonResource($link);
     }
 
-    /**
-     * @param int $id
-     */
     public function destroy(Request $request, ShareableLink $link)
     {
         $link->delete();
-        
-        return response()->json(['success' => true, 'message' => "link deleted successfully."]);
+
+        return response()->json(['success' => true, 'message' => 'link deleted successfully.']);
     }
 
     public function check(Request $request, ShareableLink $link)
     {
-        $password = $request->get('password');
+        $this->validate($request, [
+            'password' => 'required|min:1',
+        ]);
 
-        if (!Hash::check($password, $link->password)) {
-            throw new Exception("You have not permission!!", 401);
+        if (strlen((string) $link->password) === 40 && Hash::check($request->password, $link->password) === false) {
+            return $this->errorUnauthorized('You do not have permission!!');
         }
 
-        return $this->shareableLink($link);
+        return $this->shareableLink($link, true);
     }
 }

@@ -1,6 +1,6 @@
-<?php 
-namespace App\Traits; 
+<?php
 
+namespace App\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 
@@ -13,15 +13,17 @@ trait HashesId
 
     public function scopeWhereHash(Builder $query, $value)
     {
-        $id = $this->decodeHash($value);
+        $id = self::decodeHash($value);
+
         return $query->where('id', $id);
     }
 
     public static function decodeHash($hash)
     {
-        if ( (int) $hash !== 0 ) {
-            return $hash;
+        if (! ctype_digit((string) $hash) || $hash == 0) {
+            return (int) explode('|', base64_decode($hash))[0];
         }
-        return (int) explode('|', base64_decode($hash))[0];
+
+        return (int) $hash;
     }
 }

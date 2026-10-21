@@ -2,77 +2,121 @@
 
 namespace App\Http\Controllers\Translation;
 
+use App\Http\Controllers\API\V1\ApiController;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
-use JoeDixon\Translation\Drivers\Translation;
-use JoeDixon\Translation\Http\Requests\TranslationRequest;
+use Illuminate\Validation\Rule;
+use Spatie\TranslationLoader\LanguageLine;
 
-class LanguageTranslationController extends Controller
+/**
+ * Translation lines CRUD on top of spatie/laravel-translation-loader,
+ * keeping the response contract of the old Translation UI:
+ * data = { single: { single: {key: {locale: value}} }, group: {group: {key: {locale: value}}} }
+ */
+class LanguageTranslationController extends ApiController
 {
-    private $translation;
-
-    public function __construct(Translation $translation)
+    /**
+     * List all translation lines, grouped, with every locale value per key.
+     */
+    public function index()
     {
-        $this->translation = $translation;
-    }
+        $lines = LanguageLine::all();
 
-    public function index(Request $request, $language)
-    {
+        $single = [];
+        $grouped = [];
 
-        // dd($this->translation->getSingleTranslationsFor('en'));
-        // if ($request->has('language') && $request->get('language') !== $language) {
-        //     return redirect()
-        //         ->route('languages.translations.index', ['language' => $request->get('language'), 'group' => $request->get('group'), 'filter' => $request->get('filter')]);
-        // }
-
-        // $languages = $this->translation->allLanguages();
-        // $groups = $this->translation->getGroupsFor(config('app.locale'))->merge('single');
-        $translations = $this->translation->filterTranslationsFor($language, $request->get('filter'));
-
-        if ($request->has('group') && $request->get('group')) {
-            if ($request->get('group') === 'single') {
-                $translations = $translations->get('single');
-                $translations = new Collection(['single' => $translations]);
+        foreach ($lines as $line) {
+            if ($line->group === '*' || $line->group === '' || $line->group === 'single') {
+                $single[$line->key] = $line->text;
             } else {
-                $translations = $translations->get('group')->filter(function ($values, $group) use ($request) {
-                    return $group === $request->get('group');
-                });
-
-                $translations = new Collection(['group' => $translations]);
+                $grouped[$line->group][$line->key] = $line->text;
             }
         }
 
-        return new JsonResource($translations);
+        $payload = [
+            'single' => ['single' => $single],
+            'group' => $grouped,
+        ];
+
+        return new JsonResource($payload);
     }
 
-    public function create(Request $request, $language)
+    /**
+     * Add a translation line (upsert for the requested locale).
+     */
+    public function store(Request $request)
     {
-        return view('translation::languages.translations.create', compact('language'));
+        $request->validate([
+            'language' => 'required|string|max:12',
+            'key' => 'required|string|max:190',
+            'group' => 'nullable|string|max:190',
+            'namespace' => 'nullable|string|max:190',
+            'value' => 'nullable|string',
+        ]);
+
+        $language = $request->input('language');
+        $group = $this->resolveGroup($request);
+
+        $line = $this->upsert($group, $request->input('key'), $language, $request->input('value'));
+
+        return new JsonResource($line);
     }
 
-    public function store(TranslationRequest $request, $language)
+    /**
+     * Update one translated value for the given key/group.
+     */
+    public function update(Request $request)
     {
-        if ($request->filled('group')) {
-            $namespace = $request->has('namespace') && $request->get('namespace') ? "{$request->get('namespace')}::" : '';
-            $this->translation->addGroupTranslation($language, "{$namespace}{$request->get('group')}", $request->get('key'), $request->get('value') ?: '');
-        } else {
-            $this->translation->addSingleTranslation($language, 'single', $request->get('key'), $request->get('value') ?: '');
+        $request->validate([
+            'language' => 'required|string|max:12',
+            'key' => 'required|string|max:190',
+            'group' => 'nullable|string|max:190',
+            'namespace' => 'nullable|string|max:190',
+            'value' => 'nullable|string',
+        ]);
+
+        $language = $request->input('language');
+        $group = $this->resolveGroup($request);
+
+        $line = $this->upsert($group, $request->input('key'), $language, $request->input('value'));
+
+        return new JsonResource($line);
+    }
+
+    private function resolveGroup(Request $request): string
+    {
+        $group = (string) $request->input('group', '');
+
+        $namespace = (string) $request->input('namespace', '');
+
+        if ($group === '') {
+            return '*';
         }
 
-        return ['success' => true];
-    }
-
-    public function update(Request $request, $language)
-    {
-        if (! Str::contains($request->get('group'), 'single')) {
-            $this->translation->addGroupTranslation($language, $request->get('group'), $request->get('key'), $request->get('value') ?: '');
-        } else {
-            $this->translation->addSingleTranslation($language, $request->get('group'), $request->get('key'), $request->get('value') ?: '');
+        if ($namespace !== '') {
+            $group = $namespace.'::'.$group;
         }
 
-        return ['success' => true];
+        return $group;
+    }
+
+    private function upsert(string $group, string $key, string $locale, $value): LanguageLine
+    {
+        $line = LanguageLine::where('group', $group)->where('key', $key)->first();
+
+        if (! $line) {
+            return LanguageLine::create([
+                'group' => $group,
+                'key' => $key,
+                'text' => [$locale => $value],
+            ]);
+        }
+
+        $texts = $line->text;
+        $texts[$locale] = $value;
+        $line->text = $texts;
+        $line->save();
+
+        return $line;
     }
 }

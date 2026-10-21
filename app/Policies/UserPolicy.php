@@ -9,81 +9,32 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
-    public function before(User $user)
+    public function before(User $user, string $ability): ?bool
     {
         if ($user->hasPermission('administrator')) {
             return true;
         }
+
+        return null;
     }
 
-    /**
-     * Determine whether the user can view the model.
-     *
-     * @param  \App\User  $user
-     * @param  \App\User  $model
-     * @return mixed
-     */
-    public function view(User $user)
+    public function view(User $user): ?bool
     {
         return $user->hasPermission('user.view');
     }
 
-    /**
-     * Determine whether the user can create models.
-     *
-     * @param  \App\User  $user
-     * @return mixed
-     */
-    public function create(User $user)
+    public function create(User $user): ?bool
     {
         return $user->hasPermission('user.create');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     *
-     * @param  \App\User  $user
-     * @param  \App\User  $model
-     * @return mixed
-     */
-    public function update(User $user)
+    public function update(User $user): ?bool
     {
         return $user->hasPermission('user.update');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     *
-     * @param  \App\User  $user
-     * @param  \App\User  $model
-     * @return mixed
-     */
-    public function delete(User $user)
+    public function delete(User $user): ?bool
     {
         return $user->hasPermission('user.delete');
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     *
-     * @param  \App\User  $user
-     * @param  \App\User  $model
-     * @return mixed
-     */
-    public function restore(User $user)
-    {
-        return $user->hasPermission('user.restore');
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     *
-     * @param  \App\User  $user
-     * @param  \App\User  $model
-     * @return mixed
-     */
-    public function forceDelete(User $user)
-    {
-        return $user->hasPermission('user.forceDelete');
     }
 }

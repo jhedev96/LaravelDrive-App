@@ -1,27 +1,38 @@
 <?php
 
-use Faker\Generator as Faker;
+namespace Database\Factories;
 
-/*
-|--------------------------------------------------------------------------
-| Model Factories
-|--------------------------------------------------------------------------
-|
-| This directory should contain each of the model factory definitions for
-| your application. Factories provide a convenient way to generate new
-| model instances for testing / seeding your application's database.
-|
-*/
+use App\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
-$factory->define(App\User::class, function (Faker $faker) {
-    return [
-        'firstname'      => $faker->firstName ,
-        'lastname'       => $faker->lastName,
-        'avatar'         => 'http://lorempixel.com/80/60/',
-        'name'           => $faker->unique()->userName,
-        'email'          => $faker->unique()->safeEmail,
-        'password'       => bcrypt('secret'),// secret
-        'remember_token' => \Str::random(10),
-        'ip'             => $faker->ipv6,
-    ];
-});
+/**
+ * @extends Factory<User>
+ */
+class UserFactory extends Factory
+{
+    protected $model = User::class;
+
+    public function definition(): array
+    {
+        return [
+            'firstname' => fake()->firstName(),
+            'lastname' => fake()->lastName(),
+            'avatar' => 'https://www.gravatar.com/avatar/'.md5(fake()->email()).'?s=80',
+            'name' => fake()->unique()->userName(),
+            'email' => fake()->unique()->safeEmail(),
+            'email_verified_at' => now(),
+            'password' => 'password', // hashed via model cast
+            'remember_token' => Str::random(10),
+            'status' => 1,
+            'ip' => fake()->ipv4(),
+        ];
+    }
+
+    public function unverified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email_verified_at' => null,
+        ]);
+    }
+}

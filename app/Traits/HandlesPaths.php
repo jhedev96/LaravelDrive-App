@@ -2,17 +2,19 @@
 
 namespace App\Traits;
 
-use DB;
+use Illuminate\Support\Facades\DB;
 
 trait HandlesPaths
 {
     public function getPathAttribute($value)
     {
-        if ( ! $value) $value = '';
+        if (! $value) {
+            $value = '';
+        }
 
         $parts = explode('/', $value);
 
-        $parts = array_map(function($part) {
+        $parts = array_map(function ($part) {
             return $this->decodePathId($part);
         }, array_filter($parts));
 
@@ -21,15 +23,19 @@ trait HandlesPaths
 
     public function setPathAttribute($value)
     {
-        if ( ! $value) $value = '';
+        if (! $value) {
+            $value = '';
+        }
 
         $this->attributes['path'] = $this->encodePath($value);
     }
 
     /**
-     * @param string $oldPath
-     * @param string $newPath
-     * @param null $entryIds
+     * Update the path of all children entries after an ancestor was moved.
+     *
+     * @param  string  $oldPath
+     * @param  string  $newPath
+     * @param  array|null  $entryIds
      */
     public function updatePaths($oldPath, $newPath, $entryIds = null)
     {
@@ -42,6 +48,7 @@ trait HandlesPaths
             $query->whereIn('id', $entryIds);
         }
 
+        // paths contain only base36 encoded ids, so string interpolation is safe
         $query->where('path', 'LIKE', "$oldPath%")
             ->update(['path' => DB::raw("REPLACE(path, '$oldPath', '$newPath')")]);
     }
@@ -53,7 +60,9 @@ trait HandlesPaths
      */
     public function findChildren()
     {
-        if ( ! $this->exists) return collect();
+        if (! $this->exists) {
+            return collect();
+        }
 
         return $this->where('path', 'like', $this->attributes['path'].'%')->get();
     }
@@ -63,12 +72,14 @@ trait HandlesPaths
      */
     public function generatePath()
     {
-        if ( ! $this->exists) return;
+        if (! $this->exists) {
+            return;
+        }
 
         $this->path = $this->id;
 
-        if ($this->parent) {
-            $parent = $this->find($this->parent_id);
+        if ($this->parent_id) {
+            $parent = self::find($this->parent_id);
             $this->path = "{$parent->path}/$this->path";
         }
 
@@ -81,18 +92,20 @@ trait HandlesPaths
 
         $parts = array_filter($parts);
 
-        $parts = array_map(function($part) {
+        $parts = array_map(function ($part) {
             return $this->encodePathId($part);
         }, $parts);
 
         return implode('/', $parts);
     }
 
-    private function encodePathId($id) {
-        return base_convert($id, 10, 36);
+    private function encodePathId($id)
+    {
+        return base_convert((string) $id, 10, 36);
     }
 
-    private function decodePathId($id) {
-        return base_convert($id, 36, 10);
+    private function decodePathId($id)
+    {
+        return base_convert((string) $id, 36, 10);
     }
 }

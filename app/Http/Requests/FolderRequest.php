@@ -6,32 +6,20 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class FolderRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     *
-     * @return bool
-     */
-    public function authorize()
+    public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array
-     */
-    public function rules()
+    public function rules(): array
     {
-        $folderId = $this->input('id');
-
         $rules = [
-            'name'        => "string|max:255",
-            'description' => "string|min:2|max:255|nullable",
+            'name' => 'string|max:255',
+            'description' => 'string|min:2|max:255|nullable',
         ];
 
         if ($this->method() === 'POST') {
-            $rules['name']    = 'required|'.$rules['name'];
+            $rules['name'] = 'required|'.$rules['name'];
         }
 
         return $rules;

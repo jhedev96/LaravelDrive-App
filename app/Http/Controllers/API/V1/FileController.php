@@ -3,21 +3,18 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\File;
-use App\Jobs\UploadToCloud;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
+use App\Http\Requests\FileRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use App\Http\Requests\FileRequest;
-use Illuminate\Support\Facades\DB;
-use Intervention\Image\Facades\Image;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
-use Pion\Laravel\ChunkUpload\Handler\HandlerFactory;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
-
-
+use Pion\Laravel\ChunkUpload\Handler\HandlerFactory;
+use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
 
 class FileController extends ApiController
 {
@@ -34,10 +31,9 @@ class FileController extends ApiController
         }
 
         $files = File::with('uploader')
-            ->where('parent_id', $parent_id?:0)
+            ->where('parent_id', $parent_id ?: 0)
             ->where('uploaded_by', $user->id)
-            ->orderBy(DB::raw('type = "folder"'), 'desc');
-        
+            ->orderByRaw('type = ? desc', ['folder']);
 
         if ($type) {
             $files = $files->where('type', $type);
@@ -49,116 +45,92 @@ class FileController extends ApiController
 
         $files = $files->paginate($perpage);
 
-        $resource = JsonResource::collection($files);
-
-        return $resource;
+        return JsonResource::collection($files);
     }
-
-
 
     public function show(Request $request, File $file)
     {
-        $with = ['uploader'];
+        $file->load('uploader');
 
-        $file->load($with);
-
-        $resource = New JsonResource($file);
-
-        return $resource;
+        return new JsonResource($file);
     }
 
     public function store(Request $request)
     {
-        $request->input('file_name', $request->get('dzuuid'));
         $inputs = $request->all();
-        $inputs['meta']['sizes'] = $this->getDefaultSizes();
-        $inputs['meta']['permissions'] = $this->getFilePermissions($request);
+        $inputs['meta'] = [
+            'sizes' => $this->getDefaultSizes(),
+            'permissions' => $this->getFilePermissions($request),
+        ];
         $inputs['user_id'] = $request->user()->id;
 
-        $chunkupload = true;
-        if ($chunkupload) {
-            // create the file receiver
-            $receiver = new FileReceiver('file', $request, HandlerFactory::classFromRequest($request));
+        // create the file receiver
+        $receiver = new FileReceiver('file', $request, HandlerFactory::classFromRequest($request));
 
-            // check if the upload is success, throw exception or return response you need
-            if ($receiver->isUploaded() === false) {
-                throw new UploadMissingFileException();
-            }
-
-            // receive the file
-            $save = $receiver->receive();
-
-            // check if the upload has finished (in chunk mode it will send smaller files)
-            if ($save->isFinished()) {
-                // save the file and return any response you need, current example uses `move` function. If you are
-                // not using move, you need to manually delete the file by unlink($save->getFile()->getPathname())
-                $filedata = $this->getFileData($save->getFile(), $inputs);
-                $fileEntry = File::create($filedata);
-
-                $this->storeLocalUpload($fileEntry, $save->getFile());
-
-                // UploadToCloud::dispatch($fileEntry)->delay(now()->addMinutes(10)); // fire resize event and uplad to cloud
-                $resource = new JsonResource($fileEntry);
-
-                return $resource;
-            }
-
-            // we are in chunk mode, lets send the current progress
-            /** @var AbstractHandler $handler */
-            $handler = $save->handler();
-
-            return response()->json([
-                'done' => $handler->getPercentageDone(),
-                'status' => true,
-            ]);
+        // check if the upload is successful, throw exception otherwise
+        if ($receiver->isUploaded() === false) {
+            throw new UploadMissingFileException();
         }
+
+        // receive the file
+        $save = $receiver->receive();
+
+        // check if the upload has finished (in chunk mode it will send smaller files)
+        if ($save->isFinished()) {
+            $filedata = $this->getFileData($save->getFile(), $inputs);
+            $fileEntry = File::create($filedata);
+
+            $this->storeLocalUpload($fileEntry, $save->getFile());
+            $fileEntry->generatePath();
+
+            // UploadToCloud::dispatch($fileEntry)->delay(now()->addMinutes(10));
+
+            return new JsonResource($fileEntry);
+        }
+
+        // we are in chunk mode, send back the current progress
+        $handler = $save->handler();
+
+        return response()->json([
+            'done' => $handler->getPercentageDone(),
+            'status' => true,
+        ]);
     }
 
-    /**
-     * Update file.
-     *
-     * @param  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update ( FileRequest $request, File $file ) {
+    public function update(FileRequest $request, File $file)
+    {
+        $data = $request->only(['name', 'description']);
 
-        $data      = $request->only(['name', 'description']);
         $file->fill($data);
         $file->save();
         $file->refresh();
 
-    	return new JsonResource($file);
+        return new JsonResource($file);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy (File $file ) {
-        
+    public function destroy(File $file)
+    {
         $file->delete();
-        return response()->json(["file deleted successfully."]);
+
+        return response()->json(['success' => true, 'message' => 'File deleted successfully.']);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroyAll ( Request $request ) {
-        $ids = $request->get('ids');
-        File::where('id', $ids)->delete();
+    public function destroyAll(Request $request)
+    {
+        $this->validate($request, [
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer',
+        ]);
 
-        return response()->json(["file deleted successfully."]);
+        File::whereIn('id', $request->input('ids'))->delete();
+
+        return response()->json(['success' => true, 'message' => 'Files deleted successfully.']);
     }
 
-    protected function getDefaultSizes() {
+    protected function getDefaultSizes()
+    {
         return [
-            '120x80' => false
+            '120x80' => false,
         ];
     }
 
@@ -169,22 +141,17 @@ class FileController extends ApiController
         ];
     }
 
-    /**
-     * @param UploadedFile $file
-     * @param array        $extra
-     *
-     * @return array
-     */
     public function getFileData(UploadedFile $file, $extra)
     {
-        // TODO: move mime/extension/type guessing into separate class
         $entries = collect();
+
         if (Arr::get($extra, 'path')) {
             $entries = $entries->merge($this->createPath($extra['path'], $extra['parent_id'], $extra['user_id']));
             $parent = $entries->last();
-            if ($parent) $extra['parent_id'] = $parent->id;
+            if ($parent) {
+                $extra['parent_id'] = $parent->id;
+            }
         }
-
 
         $originalMime = $file->getMimeType();
 
@@ -192,71 +159,64 @@ class FileController extends ApiController
             $originalMime = $file->getClientMimeType();
         }
 
-        $file_name = Arr::get($extra, 'file_name') ? Arr::get($extra, 'file_name') : Str::random(36);
-        $data = [
+        $file_name = Arr::get($extra, 'file_name') ?: Str::random(36);
+
+        return [
             'name' => Arr::get($extra, 'name', $file->getClientOriginalName()),
             'file_name' => $file_name,
             'mime' => $originalMime,
             'type' => $this->getTypeFromMime($originalMime),
             'extension' => $this->getExtension($file, $originalMime),
             'path' => Arr::get($extra, 'path'),
-            'parent_id' => Arr::get($extra, 'parent_id'),
+            'parent_id' => Arr::get($extra, 'parent_id') ?: 0,
             'public_path' => Arr::get($extra, 'public_path'),
             'driver' => Arr::get($extra, 'driver', config('filesystems.default')),
             'driver_data' => Arr::get($extra, 'driver_data'),
             'meta' => Arr::get($extra, 'meta'),
         ];
-
-        return $data;
     }
 
     /**
-     * @param string $path
-     * @param integer|null $parentId
-     * @param integer $userId
-     * @return \Illuminate\Support\Collection
+     * Create all folders for the passed path (directories separated by "/"),
+     * skipping anything that looks like a file name (contains a dot).
      */
     private function createPath($path, $parentId, $userId)
     {
         $path = collect(explode('/', $path));
-        $path = $path->filter(function($name) {
-            return $name && ! Str::contains($name, '.');
-        });
+        $path = $path->filter(fn ($name) => $name && ! Str::contains($name, '.'));
 
-        if ($path->isEmpty()) return $path;
+        if ($path->isEmpty()) {
+            return $path;
+        }
 
-        return $path->reduce(function($parents, $name) use($parentId, $userId) {
-            if ( ! $parents) $parents = collect();
+        return $path->reduce(function ($parents, $name) use ($parentId, $userId) {
+            if (! $parents) {
+                $parents = collect();
+            }
             $parent = $parents->last();
             $values = [
                 'type' => 'folder',
                 'name' => $name,
                 'file_name' => $name,
                 'parent_id' => $parent ? $parent->id : $parentId,
-                'uploaded_by' => $userId
+                'uploaded_by' => $userId,
             ];
 
             // check if user already has a folder with that name and parent
-            $folder = File::where($values)
+            $folder = File::where('type', 'folder')
+                ->where('name', $values['name'])
+                ->where('parent_id', $values['parent_id'])
                 ->first();
 
-            if ( ! $folder) {
+            if (! $folder) {
                 $folder = File::create($values);
-                // $folder->generatePath();
+                $folder->generatePath();
             }
 
             return $parents->push($folder);
         });
     }
 
-    /**
-     * Extract file extension from specified file data.
-     *
-     * @param UploadedFile $file
-     * @param string       $mime
-     *
-     * @return string
-     */
     private function getExtension(UploadedFile $file, $mime)
     {
         if ($extension = $file->getClientOriginalExtension()) {
@@ -272,13 +232,6 @@ class FileController extends ApiController
         return explode('/', $mime)[1];
     }
 
-    /**
-     * Get type of file entry from specified mime.
-     *
-     * @param string $mime
-     *
-     * @return string
-     */
     protected function getTypeFromMime($mime)
     {
         $default = explode('/', $mime)[0];
@@ -298,17 +251,19 @@ class FileController extends ApiController
         }
     }
 
-    
+    public function createThumbanile(File $entry, UploadedFile $file, $size = '120x80')
+    {
+        if ($entry->type !== 'image') {
+            return null;
+        }
 
+        $rs = explode('x', $size);
+        if (count($rs) !== 2 || ! ctype_digit($rs[0]) || ! ctype_digit($rs[1])) {
+            return null;
+        }
 
-
-    public function createThumbanile (File $entry, UploadedFile $file, $size = '120x80') {
-        if ($entry->type !== 'image') return;
-        // Image not resized let resize it
-        $rs = explode('x', $size); // [150, 50]
-
-        //  create Intervention images
-        $image = Image::make($file)->resize($rs[0], $rs[1]);
+        // create the resized version via Intervention Image 4
+        $image = Image::read($file)->resize((int) $rs[0], (int) $rs[1]);
         $path = storage_path("app/uploads/{$entry->file_name}");
 
         $localFile = "{$path}/{$size}-{$entry->name}";
@@ -318,27 +273,8 @@ class FileController extends ApiController
     }
 
     /**
-     * @param FileEntry    $entry
-     * @param UploadedFile $contents
-     */
-    public function moveFile(file $entry, UploadedFile $file, $public = 'public', $disk = null, $file_name = null)
-    {
-        if (!$disk) {
-            $disk = config('filesystems.default');
-        }
-
-        if (!$file_name) {
-            $file_name = $entry->name;
-        }
-
-        Storage::disk($disk)->putFileAs($entry->file_name, $file, $file_name, $public);
-
-        $entry->updatePublicPaths($disk);
-    }
-
-    /**
-     * @param FileEntry    $entry
-     * @param UploadedFile $contents
+     * @param  File  $entry
+     * @param  UploadedFile  $file
      */
     public function storePublicUpload(File $entry, UploadedFile $file, $file_name = null)
     {
@@ -346,11 +282,30 @@ class FileController extends ApiController
     }
 
     /**
-     * @param FileEntry    $entry
-     * @param UploadedFile $contents
+     * @param  File  $entry
+     * @param  UploadedFile  $file
      */
     public function storeLocalUpload(File $entry, UploadedFile $file, $file_name = null)
     {
         $this->moveFile($entry, $file, 'public', 'local', $file_name);
+    }
+
+    /**
+     * Save the uploaded file on the specified disk.
+     *
+     * @param  File  $entry
+     * @param  UploadedFile  $file
+     */
+    public function moveFile(File $entry, UploadedFile $file, $public = 'public', $disk = null, $file_name = null)
+    {
+        $disk = $disk ?: config('filesystems.default');
+
+        if (! $file_name) {
+            $file_name = $entry->name;
+        }
+
+        Storage::disk($disk)->putFileAs($entry->file_name, $file, $file_name, ['visibility' => $public]);
+
+        $entry->updatePublicPaths($disk);
     }
 }

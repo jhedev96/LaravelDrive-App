@@ -21,7 +21,7 @@ class CaptureIpTrait
         } elseif (getenv('REMOTE_ADDR')) {
             $ipAddress = getenv('REMOTE_ADDR');
         } else {
-            $ipAddress = config('settings.nullIpAddress');
+            $ipAddress = '0.0.0.0';
         }
 
         return $ipAddress;

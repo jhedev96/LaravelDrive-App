@@ -2,15 +2,14 @@
 
 namespace App;
 
-use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 class ShareableLink extends Model
 {
-    //
-    protected $guarded = ['id'];
+    protected $table = 'shareable_links';
 
-    protected $dates = ['expires_at'];
+    protected $guarded = ['id'];
 
     protected $fillable = [
         'hash',
@@ -19,47 +18,51 @@ class ShareableLink extends Model
         'allow_edit',
         'allow_download',
         'password',
-        'expires_at'
+        'expires_at',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'allow_download' => 'boolean',
-        'allow_edit' => 'boolean'
+        'allow_edit' => 'boolean',
+        'expires_at' => 'datetime',
     ];
 
     protected $hidden = [
-        'password', 'expires_at', 'hash', 'user_id', 'file_id'
+        'password',
+        'expires_at',
+        'hash',
+        'user_id',
+        'file_id',
     ];
 
     protected $appends = [
-        'link'
+        'link',
     ];
-
 
     public function file()
     {
         return $this->belongsTo(File::class);
     }
 
-    public function getLinkAttribute() {
-        return route('shareable', [ 'hash' => $this->hash]);
+    public function getLinkAttribute()
+    {
+        return route('shareable', ['hash' => $this->hash]);
     }
 
-
-    /**
-     * @param string $value
-     */
     public function setHashAttribute($value)
     {
         $this->attributes['hash'] = $value ? $value : \Str::random(30);
     }
 
-    /**
-     * @param string $value
-     */
     public function setExpiresAtAttribute($value)
     {
+        if (empty($value)) {
+            $this->attributes['expires_at'] = null;
+
+            return;
+        }
+
         $this->attributes['expires_at'] = Carbon::parse($value);
     }
 }

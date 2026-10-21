@@ -2,101 +2,108 @@
 
 namespace App\Jobs;
 
+use App\File;
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Intervention\Image\Facades\Image;
+use Illuminate\Http\File as FileAdapter;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\File as FileAdapdar;
-use App\File;
+use Intervention\Image\Laravel\Facades\Image;
+use Throwable;
 
 class ResizedImage implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * App\File object.
-     *
-     * @var App\File;
+     * Number of times the job may be attempted.
      */
-    protected $file;
+    public int $tries = 1;
 
-    /**
-     * Create a new job instance.
-     */
+    protected File $file;
+
     public function __construct(File $file)
     {
         $this->file = $file;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle()
     {
-        // we cant anything without image
         if ($this->file->type !== 'image') {
             return;
         }
 
-        // get sizes of images
-        $meta = $this->file->meta;
-        $sizes = $meta['sizes'];
-        // there are not any sizes;
-        if (!is_array($sizes)) {
+        $sizes = $this->file->meta['sizes'] ?? null;
+
+        // not assigned any sizes to generate, nothing to do
+        if (! is_array($sizes)) {
             return;
         }
 
-        /*
-         * is file in cloude then,
-         * Download from cloud to local then resize it.
-         */
+        $cloudDisk = config('filesystems.cloud');
 
-        if ($this->file->driver == config('filesystems.cloud')) {
-            if (!Storage::disk(config('filesystems.cloud'))->exists($this->file->getStoragePath())) {
-                throw new Exception();
-            }
-            $s3file = Storage::disk(config('filesystems.cloud'))->get($this->file->getStoragePath());
-            Storage::disk('local')->put("{$this->file->file_name}/{$this->file->name}", $s3file);
+        if ($this->file->driver === $cloudDisk
+            && ! Storage::disk($cloudDisk)->exists($this->file->getStoragePath())) {
+            Log::error('ResizedImage: source image is missing on the configured cloud disk.', [
+                'file_id' => $this->file->id,
+                'path' => $this->file->getStoragePath(),
+            ]);
+
+            return;
         }
 
         $path = storage_path("app/uploads/{$this->file->file_name}");
-        $file = new FileAdapdar("{$path}/{$this->file->name}");
-        $public = 'public';
 
-        foreach ($sizes as $key => $value) {
-            // already we resized this size
-            if ($value == true) {
+        foreach ($sizes as $key => $done) {
+            // skip sizes already generated earlier
+            if ($done === true) {
                 continue;
             }
 
-            // Image not resized let resize it
-            $rs = explode('x', $key); // [150, 50]
+            $rs = explode('x', $key);
 
-            //  create Intervention images
-            $image = Image::make($file)->resize($rs[0], $rs[1]);
-
-            $localFile = "{$path}/{$key}-{$this->file->name}";
-            $image->save($localFile);
-
-            if ($this->file->driver == config('filesystems.cloud')) {
-                Storage::disk(config('filesystems.cloud'))->putFileAs($this->file->file_name, new FileAdapdar($localFile), "{$key}-{$this->file->name}", $public);
+            if (count($rs) !== 2 || ! ctype_digit($rs[0]) || ! ctype_digit($rs[1])) {
+                Log::warning('ResizedImage: invalid size key, skipping.', [
+                    'file_id' => $this->file->id,
+                    'size' => $key,
+                ]);
+                continue;
             }
 
-            $sizes[$key] = true;
+            try {
+                $image = Image::read("{$path}/{$this->file->name}")->resize((int) $rs[0], (int) $rs[1]);
+
+                $localFile = "{$path}/{$key}-{$this->file->name}";
+                $image->save($localFile);
+
+                if ($this->file->driver === $cloudDisk) {
+                    Storage::disk($cloudDisk)->putFileAs(
+                        $this->file->file_name,
+                        new FileAdapter($localFile),
+                        "{$key}-{$this->file->name}",
+                        ['visibility' => 'public']
+                    );
+                }
+
+                $sizes[$key] = true;
+            } catch (Throwable $e) {
+                Log::error('ResizedImage: failed to generate resized image.', [
+                    'file_id' => $this->file->id,
+                    'size' => $key,
+                    'message' => $e->getMessage(),
+                ]);
+            }
         }
 
-        // save meta values;
+        $meta = $this->file->meta ?? [];
         $meta['sizes'] = $sizes;
         $this->file->meta = $meta;
+
         if ($this->file->isDirty()) {
             $this->file->save();
-        }
-
-        if ($this->file->driver == config('filesystems.cloud')) {
-            Storage::deleteDirectory($path);
         }
     }
 }

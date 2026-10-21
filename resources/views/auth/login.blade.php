@@ -28,7 +28,7 @@
     <link rel="shortcut icon" href="assets/ico/favicon.png">
     <script>
         window.LD = @json([
-            'csftToken' => csrf_token()
+            'csrfToken' => csrf_token()
         ]);
     </script>
         <style>
@@ -97,9 +97,8 @@
                 </div>
             </div>
         </div>
-        
-        <script src="{{ mix('js/manifest.js') }}"></script>
-        <script src="{{ mix('js/vendor.js') }}"></script>
+        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
+        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
 
         <script src="{{ asset('js/config.js') }}" defer></script>
         <script src="{{ asset('js/auth.js') }}" defer></script>

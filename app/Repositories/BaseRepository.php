@@ -5,9 +5,9 @@ namespace App\Repositories;
 trait BaseRepository
 {
     /**
-     * Get number of records
+     * Get number of records.
      *
-     * @return array
+     * @return int
      */
     public function getNumber()
     {
@@ -17,9 +17,9 @@ trait BaseRepository
     /**
      * Update columns in the record by id.
      *
-     * @param $id
-     * @param $input
-     * @return App\Model|User
+     * @param  mixed  $id
+     * @param  array  $input
+     * @return bool
      */
     public function updateColumn($id, $input)
     {
@@ -35,8 +35,8 @@ trait BaseRepository
     /**
      * Destroy a model.
      *
-     * @param  $id
-     * @return mixed
+     * @param  mixed  $id
+     * @return bool
      */
     public function destroy($id)
     {
@@ -45,8 +45,6 @@ trait BaseRepository
 
     /**
      * Get model by id.
-     *
-     * @return App\Model
      */
     public function getById($id)
     {
@@ -54,9 +52,7 @@ trait BaseRepository
     }
 
     /**
-     * Get all the records
-     *
-     * @return array User
+     * Get all the records.
      */
     public function all()
     {
@@ -64,12 +60,7 @@ trait BaseRepository
     }
 
     /**
-     * Get number of the records
-     *
-     * @param  int $number
-     * @param  string $sort
-     * @param  string $sortColumn
-     * @return Paginate
+     * Get paginated records.
      */
     public function page($number = 10, $sort = 'desc', $sortColumn = 'created_at')
     {
@@ -79,8 +70,8 @@ trait BaseRepository
     /**
      * Store a new record.
      *
-     * @param  $input
-     * @return User
+     * @param  array  $input
+     * @return mixed
      */
     public function store($input)
     {
@@ -90,9 +81,9 @@ trait BaseRepository
     /**
      * Update a record by id.
      *
-     * @param  $id
-     * @param  $input
-     * @return User
+     * @param  mixed  $id
+     * @param  array  $input
+     * @return mixed
      */
     public function update($id, $input)
     {
@@ -101,29 +92,34 @@ trait BaseRepository
         return $this->save($this->model, $input);
     }
 
-    public function setAttributes ($model, $input) {
+    public function setAttributes($model, $input)
+    {
         $fillable = $model->getFillable();
-        foreach ( $input as $key => $value ) {
-            if ( in_array( $key, $fillable ) ) {
+
+        foreach ($input as $key => $value) {
+            if (in_array($key, $fillable)) {
                 $model->$key = $value;
             }
         }
+
         return $model;
     }
 
     /**
      * Save the input's data.
      *
-     * @param  $model
-     * @param  $input
-     * @return User
+     * @param  \Illuminate\Database\Eloquent\Model  $model
+     * @param  array  $input
+     * @return mixed
      */
     public function save($model, $input)
     {
         $model->fill($input);
 
-        if ( $model->save() ){
+        if ($model->save()) {
             return $model;
         }
+
+        return false;
     }
 }

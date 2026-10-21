@@ -1,67 +1,65 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\API\V1\CopyFileController;
+use App\Http\Controllers\API\V1\DeleteFileController;
+use App\Http\Controllers\API\V1\DownloadController;
+use App\Http\Controllers\API\V1\FileController;
+use App\Http\Controllers\API\V1\FolderController;
+use App\Http\Controllers\API\V1\MoveFileController;
+use App\Http\Controllers\API\V1\RoleController;
+use App\Http\Controllers\API\V1\ShareableLinkController;
+use App\Http\Controllers\API\V1\SharesController;
+use App\Http\Controllers\API\V1\StarredController;
+use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes (auth:api = Passport bearer tokens)
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
 */
-Route::group([
-    'middleware' => ['auth:api'],
-    'namespace' => 'API\V1',
-], function () {
 
-    Route::delete('users/delete-multiple', 'UserController@deleteMultiple');
-    Route::get('users/search', 'UserController@search');
-    Route::resource('users', 'UserController', ['except' => ['edit']]);
+Route::middleware('auth:api')->group(function () {
+    Route::delete('users/delete-multiple', [UserController::class, 'deleteMultiple'])->name('users.delete-multiple');
+    Route::get('users/search', [UserController::class, 'search'])->name('users.search');
+    Route::resource('users', UserController::class, ['except' => ['edit']]);
 
-    Route::resource('roles', 'RoleController', ['except' => ['edit']]);
-    Route::post('roles/{role_id}/attach_users', 'RoleController@attachUser');
-    Route::get('permissions', 'RoleController@getAbilities');
+    Route::resource('roles', RoleController::class, ['except' => ['edit']]);
+    Route::post('roles/{role_id}/attach_users', [RoleController::class, 'attachUser'])->name('roles.attach-user');
+    Route::get('permissions', [RoleController::class, 'getAbilities'])->name('permissions');
 
-    Route::resource('folder', 'FolderController');
-    
-    Route::delete('file/delete', 'DeleteFileController@delete');
-    Route::get('file/trash', 'DeleteFileController@trash');
-    Route::get('file/star', 'StarredController@index');
-    Route::post('file/copy', 'CopyFileController@copy');
-    Route::post('file/move', 'MoveFileController');
-    Route::post('file', 'FileController@store')->middleware('throttle:60');
-    Route::resource('file', 'FileController');
+    Route::resource('folder', FolderController::class);
 
-  
-    Route::post('tag/star', 'StarredController@add');
-    Route::post('tag/unstar', 'StarredController@remove');
+    Route::delete('file/delete', [DeleteFileController::class, 'delete'])->name('file.delete');
+    Route::get('file/trash', [DeleteFileController::class, 'trash'])->name('file.trash');
+    Route::get('file/star', [StarredController::class, 'index'])->name('file.star');
+    Route::post('file/copy', [CopyFileController::class, 'copy'])->name('file.copy');
+    Route::post('file/move', MoveFileController::class)->name('file.move');
+    Route::post('file', [FileController::class, 'store'])->middleware('throttle:chunk')->name('file.store');
+    Route::resource('file', FileController::class);
 
-    Route::post('/download', 'DownloadController@download');
+    Route::post('tag/star', [StarredController::class, 'add'])->name('tag.star');
+    Route::post('tag/unstar', [StarredController::class, 'remove'])->name('tag.unstar');
 
-    //sharing
-    // Route::post('shareable-links/{linkId}/import', 'SharesController@addCurrentUser');
-    Route::get('shared/files', 'SharesController@sharedWithMe');
-    Route::get('shared/file/{file_id}/share-with', 'SharesController@sharedWith');
-    Route::post('shares/add-users', 'SharesController@addUsers');
-    Route::put('shares/update-users', 'SharesController@updateUsers');
-    Route::delete('shares/remove-user/{userId}', 'SharesController@removeUser');
+    Route::post('/download', [DownloadController::class, 'download'])->name('download');
 
-    // //SHAREABLE LINKS
-    Route::get('shareable-links/file/{fileId}', 'ShareableLinkController@getFileShareableLink');
-    Route::post('shareable-links/file/{fileId}', 'ShareableLinkController@storeFileShareableLink');
-    Route::put('shareable-links/{id}', 'ShareableLinkController@update');
-    Route::delete('shareable-links/{id}', 'ShareableLinkController@destroy');
+    // sharing
+    Route::get('shared/files', [SharesController::class, 'sharedWithMe'])->name('shared.files');
+    Route::get('shared/file/{file_id}/share-with', [SharesController::class, 'sharedWith'])->name('shared.share-with');
+    Route::post('shares/add-users', [SharesController::class, 'addUsers'])->name('shares.add-users');
+    Route::put('shares/update-users', [SharesController::class, 'updateUsers'])->name('shares.update-users');
+    Route::delete('shares/remove-user/{userId}', [SharesController::class, 'removeUser'])->name('shares.remove-user');
 
+    // shareable links
+    Route::get('shareable-links/file/{fileId}', [ShareableLinkController::class, 'getFileShareableLink'])->name('shareable-links.get');
+    Route::post('shareable-links/file/{fileId}', [ShareableLinkController::class, 'storeFileShareableLink'])->name('shareable-links.store');
+    Route::put('shareable-links/{id}', [ShareableLinkController::class, 'update'])->name('shareable-links.update');
+    Route::delete('shareable-links/{id}', [ShareableLinkController::class, 'destroy'])->name('shareable-links.destroy');
 
     // translations
-    Route::get('translation/languages', '\App\Http\Controllers\Translation\LanguageController@index');
-    Route::post('translation/languages', '\App\Http\Controllers\Translation\LanguageController@store');
-    Route::get('translation/{language}/translations', '\App\Http\Controllers\Translation\LanguageTranslationController@index');
-    Route::post('translation/{language}/translations', '\App\Http\Controllers\Translation\LanguageTranslationController@store');
-    Route::put('translation/{language}/translations', '\App\Http\Controllers\Translation\LanguageTranslationController@update');
-
+    Route::get('translation/languages', [\App\Http\Controllers\Translation\LanguageController::class, 'index'])->name('translation.languages.index');
+    Route::post('translation/languages', [\App\Http\Controllers\Translation\LanguageController::class, 'store'])->name('translation.languages.store');
+    Route::get('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'index'])->name('translation.translations.index');
+    Route::post('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'store'])->name('translation.translations.store');
+    Route::put('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'update'])->name('translation.translations.update');
 });

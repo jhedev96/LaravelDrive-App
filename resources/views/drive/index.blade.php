@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="{{ asset('css/main.css') }}">
     <script>
         window.LD = @json([
-            'csftToken' => csrf_token(),
+            'csrfToken' => csrf_token(),
             'user'  => $user,
         ]);
     </script>
@@ -33,8 +33,8 @@
     <div class="laraadmin rootouter">
         <div id="root"></div>
     </div>
-    <script src="{{ mix('js/manifest.js') }}"></script>
-    <script src="{{ mix('js/vendor.js') }}"></script>
+        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
+        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
 
     <!-- Scripts -->
     <script src="{{ asset('js/config.js') }}" defer></script>

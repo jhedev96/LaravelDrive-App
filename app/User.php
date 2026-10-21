@@ -2,22 +2,16 @@
 
 namespace App;
 
-use Laravel\Passport\HasApiTokens;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Passport\Contracts\OAuthenticatable;
+use Laravel\Passport\HasApiTokens;
 
-//implements MustVerifyEmail  // email varification is diable now
-
-class User extends Authenticatable 
+class User extends Authenticatable implements OAuthenticatable
 {
-    use Notifiable, HasApiTokens;
+    use Notifiable, HasApiTokens, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'name',
         'email',
@@ -28,125 +22,132 @@ class User extends Authenticatable
         'permissions',
         'avatar',
         'last_loged_in',
-        'ip'
-
+        'ip',
     ];
 
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
     protected $hidden = [
-        'password', 'remember_token',
+        'password',
+        'remember_token',
     ];
 
-    protected $with = [
-        'roles'
+    protected $casts = [
+        'password' => 'hashed',
+        'email_verified_at' => 'datetime',
+        'last_loged_in' => 'datetime',
     ];
 
-    static $status = [
-        '0' => 'inactive',
-        '1' => 'active',
-        '2' => "pandding",
-        '3' => "baned"
+    protected $with = ['roles'];
+
+    public static array $statusLabels = [
+        0 => 'inactive',
+        1 => 'active',
+        2 => 'pending',
+        3 => 'banned',
     ];
 
-    public function getStatusAttribute ( $value ) {
-        if ( array_key_exists( $value, self::$status ) ) {
-            return self::$status[$value];
+    public function getStatusAttribute($value)
+    {
+        if (array_key_exists($value, self::$statusLabels)) {
+            return self::$statusLabels[$value];
+        }
+
+        return $value;
+    }
+
+    public function setStatusAttribute($value)
+    {
+        if (is_numeric($value) || ctype_digit((string) $value)) {
+            $this->attributes['status'] = (int) $value;
+
+            return;
+        }
+
+        $this->attributes['status'] = array_search(strtolower($value), self::$statusLabels);
+    }
+
+    public function setPermissionsAttribute($value)
+    {
+        if (! empty($value)) {
+            $this->attributes['permissions'] = serialize($value);
         }
     }
 
-    public function setStatusAttribute( $value ) {
-        $value = strtolower( $value );
-        $key   = array_search( $value, self::$status );
-
-        if ( array_key_exists( $value, self::$status ) ) {
-            $this->attributes['status'] = $value;
-        } else {
-            $this->attributes['status'] = $key;
-        }
-    }
-
-    public function setPermissionsAttribute( $value ) {
-        if ( ! empty($value) ) {
-            $this->attributes['permissions'] = serialize( $value );
-        }
-    }
-
-    public function getPermissionsAttribute( $value ) {
+    public function getPermissionsAttribute($value)
+    {
         $permissions = [];
+
         if ($value) {
-            $permissions = unserialize( $value );
+            $permissions = (array) (is_serialized($value) ? @unserialize($value) : []);
         }
-        
+
         $roles = $this->roles;
 
-        foreach ( $roles as $role ) {
+        foreach ($roles as $role) {
             $permissions = array_merge($permissions, $role->permissions);
         }
 
-        return empty($permissions) ? [] : $permissions;
+        return empty($permissions) ? [] : array_values(array_unique($permissions));
     }
 
-    public function hasPermission( $permission ) {
-        if ( in_array($permission, $this->permissions) ){
-            return true;
-        }
-
-        return false;
+    public function hasPermission($permission)
+    {
+        return in_array($permission, $this->permissions, true);
     }
-
 
     public function roles()
     {
-        return $this->belongsToMany('App\Role');
+        return $this->belongsToMany(Role::class);
+    }
+
+    public function meta()
+    {
+        return $this->hasMany(UserMeta::class);
+    }
+
+    public function sharedFiles()
+    {
+        return $this->belongsToMany(File::class, 'file_user', 'user_id', 'file_id')
+            ->withPivot(['permissions', 'created_at', 'updated_at', 'owner']);
     }
 
     /**
-     * Get the comments for the blog post.
+     * Legacy snake_case alias kept for compatibility with the previous API responses.
      */
-    public function meta()
+    public function shared_files()
     {
-        return $this->hasMany('App\UserMeta');
+        return $this->sharedFiles();
     }
 
-    public function shared_files () {
-        return $this->belongsToMany('App\File', 'file_user', 'user_id', 'file_id');
-    }
-
-    public function getDisplayNameAttribute() {
-        return $this->firstname .' '. $this->lastname;
+    public function getDisplayNameAttribute()
+    {
+        return trim(($this->firstname ?? '').' '.($this->lastname ?? '')) ?: $this->name;
     }
 
     public function getAvatarAttribute($value)
     {
-        if (!is_array($value)) {
-            $value = json_decode($value);
-        }
+        $value = is_array($value) ? $value : json_decode($value);
 
-        if (empty($value) && empty($value->avatar)) {
-            $value = new \STDClass();
+        if (empty($value) || empty($value->avatar)) {
+            $value = new \stdClass();
             $value->avatar = $this->get_gravatar($this->email, 200);
         }
 
         return $value;
     }
 
-    protected function get_gravatar($email, $s = 40, $d = 'mp', $r = 'g', $img = false, $atts = array())
+    protected function get_gravatar($email, $s = 40, $d = 'mp', $r = 'g', $img = false, $atts = [])
     {
         $url = 'https://www.gravatar.com/avatar/';
-        $url .= md5(strtolower(trim($email)));
+        $url .= md5(strtolower(trim($email ?? '')));
         $url .= "?s=$s&d=$d&r=$r";
         if ($img) {
-            $url = '<img src="' . $url . '"';
+            $url = '<img src="'.htmlspecialchars($url, ENT_QUOTES).'"';
             foreach ($atts as $key => $val) {
-                $url .= ' ' . $key . '="' . $val . '"';
+                $url .= ' '.$key.'="'.htmlspecialchars($val, ENT_QUOTES).'"';
             }
             $url .= ' />';
         }
+
         return $url;
     }
-    
 }

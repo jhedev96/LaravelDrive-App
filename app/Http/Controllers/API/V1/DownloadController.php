@@ -2,49 +2,37 @@
 
 namespace App\Http\Controllers\API\V1;
 
-use Auth;
-use Storage;
 use App\File;
-use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\Collection;
 use App\Response\DownloadResponse;
+use Illuminate\Http\Request;
 
 class DownloadController extends ApiController
 {
-        /**
-     * @var Request
-     */
-    private $request;
+    private Request $request;
 
-    /**
-     * @var File
-     */
-    private $file;
-    /**
-     * download response
-     * 
-     * @var DownloadResponse
-     */
+    private File $file;
 
-    private $downloadResponse;
+    private DownloadResponse $downloadResponse;
 
     public function __construct(Request $request, File $file, DownloadResponse $downloadResponse)
     {
-        
         $this->request = $request;
         $this->file = $file;
-
         $this->downloadResponse = $downloadResponse;
-    } 
+    }
 
-    public function download (Request $request) 
+    public function download(Request $request)
     {
-        $ids = $request->get('ids');
+        $this->validate($request, [
+            'ids' => 'required|array|min:1',
+        ]);
 
-        if (sizeof( $ids ) > 1) {
+        $ids = $request->input('ids');
+
+        if (count($ids) > 1) {
             return $this->downloadResponse->multipleDownload($ids);
-        } else {
-            return $this->downloadResponse->singleDownload($ids[0]);
         }
+
+        return $this->downloadResponse->singleDownload($ids[0]);
     }
 }

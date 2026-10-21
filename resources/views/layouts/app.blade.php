@@ -131,9 +131,8 @@
             </main>
             </div>
         </div>
-
-        <script src="{{ mix('js/manifest.js') }}"></script>
-        <script src="{{ mix('js/vendor.js') }}"></script>
+        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
+        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
 
     </body>
 </html>
