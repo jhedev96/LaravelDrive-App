@@ -25,6 +25,14 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // must run before PassportServiceProvider::boot() (package providers
+        // boot first): restores the first-party JSON API surface
+        // (/oauth/clients, /oauth/tokens, /oauth/scopes,
+        // /oauth/personal-access-tokens) that Passport 8 registered by
+        // default and the admin passport pages (0-usage feature) call via
+        // axios. Passport 13 gates these routes behind this flag.
+        Passport::$registersJsonApiRoutes = true;
+
         // payment rail swap point (D18): midtrans primary, xendit to come
         $this->app->bind(
             \App\Services\Billing\Contracts\PaymentGateway::class,
