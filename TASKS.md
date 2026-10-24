@@ -58,7 +58,7 @@
 - [x] W4.7 `File::children()/parent()` kolom `folder_id` → `parent_id` (+global scope `fsType` ngentong mati) — relasi + scope `fsType` where type=folder jadi hidup
 - [x] W4.8 `FileController::destroyAll` `whereIn` fix; DownloadController `sizeof(null)` guard
 - [x] W4.9 `ResizedImage` exception handling proper — Throwable catch + guard `meta['sizes']` + logging
-- [ ] W4.10 Job diag: error forbidden kontrak saat permissions read lors of sharing
+- [x] W4.10 Job diag: error-forbidden kontrak saat permissions (share) — asal: legacy `errorForbidden()` memang `setStatusCode(500)` + CODE_FORBIDDEN → sudah diselesaikan W4.4 (403) dan semantik 403 share terkunci `ShareTest`; `ResizedImage` error handling rapi W4.9; tidak ada caller lain `errorForbidden` di legacy
 - [x] W4.11 **file_size tak pernah disimpan saat upload** (bug usaha lama ditemukan saat menulis test W6.2) — kini di-set pada penghimpunan akhir store + masuk `$fillable` File; kebutuhan `storageUsed()`/kuota jadi hidup
 - [x] W4.12 **Injeksi Request konstruktor => instance usang** di Delete/Copy/Starred/Download controller (test-flow multi-request: `action` selalu NULL → deleteforever turun ke soft-delete secara diam-diam) → semua pindah ke penyuntikan metode; **cursor() + mutasi tabel yang sama** (deleteEntries, copyEntries) → sudah di-materialisasi melalui `get()`
 - [x] W4.13 **Shareable-link update/destroy buta-model**: route param `{id}` gak cocok dgn type-hint `$link` → binding implisit gak jalan → container injek model KOSONG → `$link->save()` jadi INSERT duplikat (hash NOT NULL → 500). Route param diganti `{link}` (nilai path tetap id, kontrak FE aman); ketemu saat nulis `ShareTest`

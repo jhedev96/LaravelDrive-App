@@ -1,0 +1,38 @@
+name: backend
+
+on:
+  push:
+    branches: [modernization, develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    name: php 8.5 / phpunit (sqlite)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup php 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, gd, exif, pdo_sqlite, zip
+          coverage: none
+
+      - name: composer install
+        run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
+      - name: prepare env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan passport:keys --no-interaction
+
+      - name: style check (pint, dirty only)
+        run: vendor/laravel/pint/builds/pint --test --dirty --no-interaction
+
+      - name: feature suite (sqlite in-memory)
+        run: php artisan test
