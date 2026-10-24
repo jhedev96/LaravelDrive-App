@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\V1;
 
+use App\Response\DownloadResponse;
 use App\ShareableLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -10,6 +11,10 @@ use Illuminate\Support\Str;
 
 class ShareableLinkController extends ApiController
 {
+    public function __construct(private readonly DownloadResponse $downloadResponse)
+    {
+    }
+
     public function getFileShareableLink(Request $request, $fileId)
     {
         $link = ShareableLink::where('file_id', $fileId)->first();
@@ -86,16 +91,81 @@ class ShareableLinkController extends ApiController
         return response()->json(['success' => true, 'message' => 'link deleted successfully.']);
     }
 
-    public function check(Request $request, ShareableLink $link)
+    /**
+     * W3.9 public surface (stateless — owner-approved): guest info,
+     * password check and download behind /file/s/{hash}. The
+     * route-model `check()` variant below was never registered (0-usage
+     * legacy artifact keyed by id only) and is replaced by the hash-based
+     * public methods.
+     */
+    public function publicLink(string $hash)
     {
+        $link = $this->resolvePublicLink($hash);
+
+        // password-gated links reveal nothing until the check passes
+        if ($link->password) {
+            return response()->json(['data' => [
+                'requires_password' => true,
+                'allows_download' => (bool) $link->allow_download,
+            ]]);
+        }
+
+        return $this->shareableLink($link, true);
+    }
+
+    public function publicCheck(Request $request, string $hash)
+    {
+        $link = $this->resolvePublicLink($hash);
+
         $this->validate($request, [
             'password' => 'required|min:1',
         ]);
 
-        if (strlen((string) $link->password) === 40 && Hash::check($request->password, $link->password) === false) {
+        if ($link->password && Hash::check((string) $request->input('password'), (string) $link->password) === false) {
             return $this->errorUnauthorized('You do not have permission!!');
         }
 
         return $this->shareableLink($link, true);
+    }
+
+    public function publicDownload(Request $request, string $hash)
+    {
+        $link = $this->resolvePublicLink($hash);
+
+        if (! $link->allow_download) {
+            return $this->errorForbidden('Downloading is not allowed for this link.');
+        }
+
+        if ($link->password) {
+            $this->validate($request, ['password' => 'required|min:1']);
+
+            if (Hash::check((string) $request->input('password'), (string) $link->password) === false) {
+                return $this->errorUnauthorized('You do not have permission!!');
+            }
+        }
+
+        return $link->file->type === 'folder'
+            ? $this->downloadResponse->folderDownload($link->file)
+            : $this->downloadResponse->singleDownload($link->file->hash);
+    }
+
+    /**
+     * Shareable links live by hash: expired or entry-trashed links die with
+     * a plain 404 (ModelNotFound already renders JSON under api/*).
+     */
+    private function resolvePublicLink(string $hash): ShareableLink
+    {
+        $link = ShareableLink::query()
+            ->where('hash', $hash)
+            ->where(fn ($query) => $query
+                ->whereNull('expires_at')
+                ->orWhere('expires_at', '>', now()))
+            ->firstOrFail();
+
+        if (! $link->file || $link->file->trashed()) {
+            abort(404);
+        }
+
+        return $link;
     }
 }

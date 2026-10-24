@@ -71,3 +71,12 @@ Route::middleware('auth:api')->group(function () {
 
 // payment notifications (signature-guarded, no auth)
 Route::post('webhooks/midtrans', \App\Http\Controllers\Billing\MidtransWebhookController::class)->name('webhooks.midtrans');
+
+// W3.9 public shareable-link surface for /file/s/{hash} (guest, stateless —
+// owner-approved: the password travels with every request, no session).
+// The default `api` throttle (60/min per ip) rates the download path.
+Route::prefix('share/links')->group(function (): void {
+    Route::get('{hash}', [ShareableLinkController::class, 'publicLink'])->name('share.links.show');
+    Route::post('{hash}/check', [ShareableLinkController::class, 'publicCheck'])->name('share.links.check');
+    Route::post('{hash}/download', [ShareableLinkController::class, 'publicDownload'])->name('share.links.download');
+});

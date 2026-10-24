@@ -38,6 +38,7 @@ class ShareableLink extends Model
 
     protected $appends = [
         'link',
+        'requires_password',
     ];
 
     public function file()
@@ -48,6 +49,11 @@ class ShareableLink extends Model
     public function getLinkAttribute()
     {
         return route('shareable', ['hash' => $this->hash]);
+    }
+
+    public function getRequiresPasswordAttribute()
+    {
+        return ! empty($this->attributes['password']);
     }
 
     public function setHashAttribute($value)
