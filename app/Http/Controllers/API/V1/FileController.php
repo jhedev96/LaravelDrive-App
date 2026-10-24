@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\File;
 use App\Http\Requests\FileRequest;
+use App\Events\FileEntryCreated;
 use App\Services\StorageQuota;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -91,6 +92,9 @@ class FileController extends ApiController
 
             $this->storeLocalUpload($fileEntry, $incoming);
             $fileEntry->generatePath();
+
+            // W3.2: live-refresh for the owner's drive channel (Reverb)
+            FileEntryCreated::dispatch($fileEntry);
 
             // UploadToCloud::dispatch($fileEntry)->delay(now()->addMinutes(10));
 

@@ -35,13 +35,13 @@
 - [~] W2.4 Intervention Image 4 refactor (`ResizedImage` job + `createThumbanile`), hapus `sleep(5)` → job chaining cleanup — refactor OK, chaining cleanup belum
 - [~] W2.5 Socialite 5 + socialiteproviders/manager (fb, twitter-x, google, github, youtube, twitch, instagram); transport goog `.env` — config + routes OK, provider tuning saat uji
 - [~] W2.6 spatie/laravel-translation-loader + driver DB; endpoint `/api/translation/*` kontrak tetap — endpoint replay per D14 OK, verifikasi kontrak FE saat rebuild
-- [~] W2.7 Laravel Reverb + routes/channels.php (event FileCreated/FileDeleted/FileShared skeleton) — config + channel OK, events belum dibroadcast
-- [~] W2.8 Flysystem 3 disks: s3 (league/flysystem-aws-s3-v3), doSpaces via s3 config, dropbox (spatie), ftp; RACKSPACE dibuang (sunset) — konfig semua disk masuk; **dropbox adapter `spatie/flysystem-dropbox` + `Storage::extend('dropbox')` belum (W2.8 lanjutan)**
+- [x] W2.7 Laravel Reverb + routes/channels.php — config + kanal `drive.{id}` (+legacy `App.User.{id}`); events backend broadcast penuh (lihat W3.3); FE Echo wiring = WS5
+- [x] W2.8 Flysystem 3 disks: s3 (league/flysystem-aws-s3-v3), doSpaces via s3 config, dropbox (**`spatie/flysystem-dropbox` + `Storage::extend('dropbox')` di AppServiceProvider ✓** `41de492`), ftp; RACKSPACE dibuang (sunset)
 
 ## WS3 — Realisasi fitur (dari 0-usage)
 - [ ] W3.1 Passport admin API endpoints + route + policy owner
 - [ ] W3.2 Passport UI FE (port Clients/AuthorizedClients/PersonalAccessTokens ke Vuetify 4) + route `settings/oauth`
-- [ ] W3.3 Broadcast events + channel + FE Echo wiring realtime (list/controller sync)
+- [~] W3.3 **Broadcast events realtime (backend)** — `app/Events/{FileEntryCreated,FileEntriesChanged,FileEntriesShared}` (ShouldBroadcastNow, kanal privat `drive.{userId}`, legacy `App.User.{id}` tetap), dipasang di FileController::store / DeleteFileController::delete / SharesController::addUsers; `BroadcastEventsTest` 4 ijo. Kontrak FE (Echo): `entry.created {entry:{hash,id,name,type,mime,extension,file_size,parent_id}}`, `entries.changed {action: trash|restore|deleteforever, entries:[hash]}`, `entries.shared {entries:[hash], permissions:int}` — FE wiring + dev Reverb = sisa WS5
 - [ ] W3.4 Storage driver selection per file (driver modernis PATH/FLOWS di File model/observers)
 - [ ] W3.5 Translation CRUD complements (driver database spatie) + FE pages port v4
 - [ ] W3.6 UploadToCloud job siap S3/DO/Dropbox/FTP (multi-disk safe + tests)
@@ -63,6 +63,7 @@
 - [x] W4.12 **Injeksi Request konstruktor => instance usang** di Delete/Copy/Starred/Download controller (test-flow multi-request: `action` selalu NULL → deleteforever turun ke soft-delete secara diam-diam) → semua pindah ke penyuntikan metode; **cursor() + mutasi tabel yang sama** (deleteEntries, copyEntries) → sudah di-materialisasi melalui `get()`
 - [x] W4.13 **Shareable-link update/destroy buta-model**: route param `{id}` gak cocok dgn type-hint `$link` → binding implisit gak jalan → container injek model KOSONG → `$link->save()` jadi INSERT duplikat (hash NOT NULL → 500). Route param diganti `{link}` (nilai path tetap id, kontrak FE aman); ketemu saat nulis `ShareTest`
 - [x] W4.14 User `permissions` (D13 serialize): mutator `setPermissionsAttribute` men-serialize otomatis — wajib kirim **array mentah** dari factory/forms, BUKAN string hasil `serialize()` (double-serialization bikin `hasPermission` selalu false)
+- [x] W4.15 **`config/broadcasting.php` hilang** (tidak ikut tersalin saat porting skeleton) → `.env BROADCAST_CONNECTION` tidak pernah terbaca → driver default `null` diam-diam (NullBroadcaster; auth broadcasting balas 200 body kosong, dan test HTTP channel 403 misterius karena kanal terdaftar di broadcaster yang lain) — dipublikasi via `config:publish broadcasting` (reverb/pusher/log/null). `phpunit.xml` sengaja mengunci `BROADCAST_CONNECTION=null` untuk test (tanpa jaringan); test channel-auth pakai koneksi pusher palsu + re-require channels.php. Catatan debugging: `Log::debug` tetap menembus HTTP test; stderr child phpunit hilang bila proses mati prematur (OOM flaky di box — run ulang setelah wiring sama malah ijo)
 
 ## WS5 — Frontend rebuild (Vite + Vue 3 + Vuetify 4 + Pinia)
 - [ ] W5.1 Vite config (laravel-vite-plugin, entries admin/auth/common, aliases @ac/@auth/@common) + blade `@vite`
@@ -76,7 +77,7 @@
 
 ## WS6 — QA, CI, Docs
 - [ ] W6.1 GH Actions: backend (PHP 8.4?/composer/pint/phpunit sqlite) + frontend (node 22, eslint + vite build)
-- [x] W6.2 Test targets: chunk flow, download (single/zip), shareable public access, shares, passport revoke, translation CRUD — **SELESAI (slice 1): `FileFlowTest` 7 (chunk contract, download/zip, trash+forever, index, kuota e2e); `ShareTest` 7 (link CRUD+hash password+halaman publik, shares w/ policy); `TranslationTest` 4 (languages CRUD, upsert multi-locale, kontrak data.single/group `'__'` feed via spatie loader); `LogoutTest` 1 (revoke token + JWT 401)** — sisa: shareable-link public download endpoint (W3.x realisasi)
+- [x] W6.2 Test targets: chunk flow, download (single/zip), shareable public access, shares, passport revoke, translation CRUD, **broadcast events** — SELESAI (slice 1): `FileFlowTest` 7 (chunk contract, download/zip, trash+forever, index, kuota e2e); `ShareTest` 7; `TranslationTest` 4; `LogoutTest` 1; `BroadcastEventsTest` 4 (entry.created di kanal pemilik, entries.changed trash & deleteforever, entries.shared ke penerima, otorisasi kanal private own=200 signed/other=403) — sisa: shareable-link public download endpoint (W3.x realisasi)
 - [ ] W6.3 README baru (PHP 8.4+, Node 22+, passport:keys + personal client, reverb, npm run dev), screenshot doc preserved — **gotcha: JANGAN pakai `passport:install` berulang setelah migrations di-publish (ia publish ulang oauth migrations w/ stamp baru → duplikat); gunakan `passport:keys` + `passport:client --personal`** — sudah dimasukkan ke catatan setup
 
 ## WS7 — Release

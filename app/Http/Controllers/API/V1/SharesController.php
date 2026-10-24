@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\V1;
 
+use App\Events\FileEntriesShared;
 use App\File;
 use App\Services\Shares\AttachUsersToEntry;
 use App\Services\Shares\DetachUsersFromEntries;
@@ -57,6 +58,18 @@ class SharesController extends ApiController
             $request->input('fileids'),
             $request->input('permissions')
         );
+
+        // W3.2: the recipients' channels so their shared view goes live
+        $hashes = File::query()->whereIn('id', $request->input('fileids'))
+            ->get()->map(fn (File $file) => $file->hash)->all();
+
+        FileEntriesShared::dispatch(
+            $hashes,
+            (array) $request->input('userIds'),
+            (int) $request->input('permissions'),
+        );
+
+        return $this->respondWithMessage('Files successfully shared with users.');
 
         return $this->respondWithMessage('Files successfully shared with users.');
     }

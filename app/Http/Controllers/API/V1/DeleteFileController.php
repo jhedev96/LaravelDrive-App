@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\V1;
 
+use App\Events\FileEntriesChanged;
 use App\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -24,7 +25,15 @@ class DeleteFileController extends ApiController
             'ids.*' => 'required|integer',
         ]);
 
-        $this->deleteEntries($request->input('ids'), $request->input('action'));
+        $action = $request->input('action');
+
+        $this->deleteEntries($request->input('ids'), $action);
+
+        // W3.2: live refresh of the acting user's drive channel
+        $hashes = File::query()->withTrashed()->whereIn('id', $request->input('ids'))
+            ->get()->map(fn (File $file) => $file->hash)->all();
+
+        FileEntriesChanged::dispatch($hashes, $action ?: 'trash', Auth::id());
 
         return response()->json(['success' => true, 'message' => 'files deleted successfully.']);
     }
