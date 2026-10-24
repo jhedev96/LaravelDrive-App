@@ -13,6 +13,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Intervention\Image\Laravel\Facades\Image;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
 use Pion\Laravel\ChunkUpload\Handler\HandlerFactory;
@@ -65,6 +66,18 @@ class FileController extends ApiController
             'permissions' => $this->getFilePermissions($request),
         ];
         $inputs['user_id'] = $request->user()->id;
+
+        // W3.4: optional per-upload storage driver (legacy contract kept — the
+        // parameter was never validated/served before). Unknown disk names are
+        // rejected instead of being silently coerced to the default disk.
+        $request->validate([
+            'driver' => [
+                'sometimes',
+                'string',
+                Rule::in(array_keys(config('filesystems.disks'))),
+            ],
+            'driver_data' => 'sometimes|array',
+        ]);
 
         // create the file receiver
         $receiver = new FileReceiver('file', $request, HandlerFactory::classFromRequest($request));
@@ -300,7 +313,15 @@ class FileController extends ApiController
      */
     public function storeLocalUpload(File $entry, UploadedFile $file, $file_name = null)
     {
-        $this->moveFile($entry, $file, 'public', 'local', $file_name);
+        // W3.4: the row's `driver` decides the physical disk. Legacy always
+        // forced `local`, silently clobbering the driver the request picked.
+        $driver = $entry->driver;
+
+        if (! in_array($driver, array_keys(config('filesystems.disks')), true)) {
+            $driver = 'local';
+        }
+
+        $this->moveFile($entry, $file, 'public', $driver, $file_name);
     }
 
     /**

@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 class CopyFileController extends ApiController
 {
@@ -80,7 +81,12 @@ class CopyFileController extends ApiController
 
     private function copyModel(File $original, $parentId = 0)
     {
-        $copy = $original->replicate();
+        // the `stared` global scope materializes a tag-name subselect as a raw
+        // attribute; replicate must drop it or the copy INSERT 500s with an
+        // unknown column (W4.16 — the copy endpoint was never exercised so it
+        // was silently broken)
+        $copy = $original->replicate(['stared']);
+
         $copy->file_name = Str::random(40);
         $copy->parent_id = $parentId;
         $copy->save();
@@ -92,7 +98,15 @@ class CopyFileController extends ApiController
 
     private function copyFileStorage(File $original, File $copy)
     {
-        Storage::disk('local')->copy($original->getStoragePath(), $copy->getStoragePath());
+        // W3.4: copy within the disk the original lives on (copying a
+        // driver-selected entry through `local` 404'ed)
+        $disk = $original->driver;
+
+        if (! in_array($disk, array_keys(config('filesystems.disks')), true)) {
+            $disk = 'local';
+        }
+
+        Storage::disk($disk)->copy($original->getStoragePath(), $copy->getStoragePath());
     }
 
     /**

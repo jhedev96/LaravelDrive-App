@@ -39,9 +39,24 @@ class DownloadResponse
         $filename = Str::slug(Str::before($upload->name, '.'), '-');
         $filename = "$filename.$upload->extension";
 
-        $filepath = Storage::disk('local')->path($upload->getStoragePath());
+        // W3.4: stream from the disk the entry actually lives on (legacy
+        // hardcoded `local`, which broke driver-selected uploads at download)
+        $disk = $upload->driver;
 
-        return response()->download($filepath, $filename, $headers);
+        if (! in_array($disk, array_keys(config('filesystems.disks')), true)) {
+            $disk = 'local';
+        }
+
+        if ($disk === 'local') {
+            // local keeps the legacy binary download response shape
+            return response()->download(
+                Storage::disk('local')->path($upload->getStoragePath()),
+                $filename,
+                $headers
+            );
+        }
+
+        return Storage::disk($disk)->download($upload->getStoragePath(), $filename, $headers);
     }
 
     public function folderDownload(File $upload)
