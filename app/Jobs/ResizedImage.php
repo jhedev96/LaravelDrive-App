@@ -74,7 +74,8 @@ class ResizedImage implements ShouldQueue
             }
 
             try {
-                $image = Image::read("{$path}/{$this->file->name}")->resize((int) $rs[0], (int) $rs[1]);
+                // Intervention 4: read() was renamed decodePath()
+                $image = Image::decodePath("{$path}/{$this->file->name}")->resize((int) $rs[0], (int) $rs[1]);
 
                 $localFile = "{$path}/{$key}-{$this->file->name}";
                 $image->save($localFile);

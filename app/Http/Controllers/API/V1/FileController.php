@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V1;
 use App\File;
 use App\Http\Requests\FileRequest;
 use App\Events\FileEntryCreated;
+use App\Jobs\ResizedImage;
 use App\Services\StorageQuota;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -105,6 +106,11 @@ class FileController extends ApiController
 
             $this->storeLocalUpload($fileEntry, $incoming);
             $fileEntry->generatePath();
+
+            // W2.4/W3 (legacy queue pipeline realized): the legacy app wrote
+            // `ResizedImage` (and manual `createThumbanile`) but never wired
+            // them to the upload flow — schedule deferred thumbnail work now
+            ResizedImage::dispatch($fileEntry);
 
             // W3.2: live-refresh for the owner's drive channel (Reverb)
             FileEntryCreated::dispatch($fileEntry);
@@ -277,7 +283,7 @@ class FileController extends ApiController
         }
     }
 
-    public function createThumbanile(File $entry, UploadedFile $file, $size = '120x80')
+    public function createThumbnail(File $entry, UploadedFile $file, $size = '120x80')
     {
         if ($entry->type !== 'image') {
             return null;
@@ -288,8 +294,10 @@ class FileController extends ApiController
             return null;
         }
 
-        // create the resized version via Intervention Image 4
-        $image = Image::read($file)->resize((int) $rs[0], (int) $rs[1]);
+        // create the resized version via the Intervention Image 4 manager
+        // (v4 renamed read() → decodePath()); rename from the legacy typo
+        // `createThumbanile` is internal-only
+        $image = Image::decodePath($file->getRealPath())->resize((int) $rs[0], (int) $rs[1]);
         $path = storage_path("app/uploads/{$entry->file_name}");
 
         $localFile = "{$path}/{$size}-{$entry->name}";
