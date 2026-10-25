@@ -10,6 +10,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import AdminApp from '@ac/App.vue';
 import routes from '@ac/router';
 import { ensureApiToken } from '@common/bootstrap';
+import { hasPermission } from '@common/auth';
 import { createDriveVuetify } from '@common/vuetify';
 
 const router = createRouter({
@@ -20,10 +21,21 @@ const router = createRouter({
 
 // legacy guard semantics: without the session user the SPA blocks
 // navigation and the layout shows its login dialog instead
-router.beforeEach(() => {
+router.beforeEach((to) => {
     const user = (window as unknown as { LD?: { user?: unknown } }).LD?.user;
 
-    return Boolean(user);
+    if (! user) {
+        return Boolean(user);
+    }
+
+    // route-level permission gates (legacy beforeRouteEnter ports)
+    const permission = to.meta?.permission as string | undefined;
+
+    if (permission && ! hasPermission(permission)) {
+        return { name: 'dashboard' };
+    }
+
+    return true;
 });
 
 // W4.21: arm /api/auth before anything talks to the API (existing

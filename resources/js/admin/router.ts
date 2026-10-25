@@ -61,21 +61,25 @@ export default [
     {
         path: 'users',
         name: 'users',
-        component: () => import('@ac/components/Users/Placeholder.vue'),
+        component: () => import('@ac/components/Users/Users.vue'),
+        meta: { permission: 'user.view' },
     },
     {
         path: 'users/roles',
         name: 'users-role',
-        component: () => import('@ac/components/Users/Placeholder.vue'),
+        component: () => import('@ac/components/Users/Roles.vue'),
+        meta: { permission: 'role.view' },
     },
     {
         path: 'users/roles/:id/permissions',
         name: 'role-permissions',
-        component: () => import('@ac/components/Users/Placeholder.vue'),
+        component: () => import('@ac/components/Users/Permissions.vue'),
+        meta: { permission: 'role.view' },
     },
     {
         path: 'users/:id',
         name: 'users-profile',
-        component: () => import('@ac/components/Users/Placeholder.vue'),
+        component: () => import('@ac/components/Users/Profile.vue'),
+        meta: { permission: 'user.view' },
     },
 ] satisfies RouteRecordRaw[];
