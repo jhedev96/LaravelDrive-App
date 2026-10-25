@@ -11,7 +11,7 @@ use Laravel\Passport\HasApiTokens;
 
 class User extends Authenticatable implements OAuthenticatable
 {
-    use Notifiable, HasApiTokens, HasFactory, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -136,6 +136,16 @@ class User extends Authenticatable implements OAuthenticatable
     }
 
     /**
+     * Entries this user uploaded (files + folders; the file_user pivot
+     * shared set above is the sharing relation, ownership lives on
+     * files.uploaded_by).
+     */
+    public function files()
+    {
+        return $this->hasMany(File::class, 'uploaded_by');
+    }
+
+    /**
      * Legacy snake_case alias kept for compatibility with the previous API responses.
      */
     public function shared_files()
@@ -153,7 +163,7 @@ class User extends Authenticatable implements OAuthenticatable
         $value = is_array($value) ? $value : json_decode($value);
 
         if (empty($value) || empty($value->avatar)) {
-            $value = new \stdClass();
+            $value = new \stdClass;
             $value->avatar = $this->get_gravatar($this->email, 200);
         }
 

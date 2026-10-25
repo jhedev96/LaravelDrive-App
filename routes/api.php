@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\V1\BillingController;
 use App\Http\Controllers\API\V1\CopyFileController;
 use App\Http\Controllers\API\V1\DeleteFileController;
 use App\Http\Controllers\API\V1\DownloadController;
@@ -10,7 +11,11 @@ use App\Http\Controllers\API\V1\RoleController;
 use App\Http\Controllers\API\V1\ShareableLinkController;
 use App\Http\Controllers\API\V1\SharesController;
 use App\Http\Controllers\API\V1\StarredController;
+use App\Http\Controllers\API\V1\StatsController;
 use App\Http\Controllers\API\V1\UserController;
+use App\Http\Controllers\Billing\MidtransWebhookController;
+use App\Http\Controllers\Translation\LanguageController;
+use App\Http\Controllers\Translation\LanguageTranslationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +40,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('file/star', [StarredController::class, 'index'])->name('file.star');
     Route::post('file/copy', [CopyFileController::class, 'copy'])->name('file.copy');
     Route::post('file/move', MoveFileController::class)->name('file.move');
+    Route::get('stats', [StatsController::class, 'index'])->name('stats.index');
     Route::post('file', [FileController::class, 'store'])->middleware('throttle:chunk')->name('file.store');
     Route::resource('file', FileController::class);
 
@@ -57,20 +63,20 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('shareable-links/{link}', [ShareableLinkController::class, 'destroy'])->name('shareable-links.destroy');
 
     // translations
-    Route::get('translation/languages', [\App\Http\Controllers\Translation\LanguageController::class, 'index'])->name('translation.languages.index');
-    Route::post('translation/languages', [\App\Http\Controllers\Translation\LanguageController::class, 'store'])->name('translation.languages.store');
-    Route::get('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'index'])->name('translation.translations.index');
-    Route::post('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'store'])->name('translation.translations.store');
-    Route::put('translation/{language}/translations', [\App\Http\Controllers\Translation\LanguageTranslationController::class, 'update'])->name('translation.translations.update');
+    Route::get('translation/languages', [LanguageController::class, 'index'])->name('translation.languages.index');
+    Route::post('translation/languages', [LanguageController::class, 'store'])->name('translation.languages.store');
+    Route::get('translation/{language}/translations', [LanguageTranslationController::class, 'index'])->name('translation.translations.index');
+    Route::post('translation/{language}/translations', [LanguageTranslationController::class, 'store'])->name('translation.translations.store');
+    Route::put('translation/{language}/translations', [LanguageTranslationController::class, 'update'])->name('translation.translations.update');
 
     // billing (D18) — plans catalog + QRIS orders
-    Route::get('billing/plans', [\App\Http\Controllers\API\V1\BillingController::class, 'index'])->name('billing.plans');
-    Route::get('billing/orders', [\App\Http\Controllers\API\V1\BillingController::class, 'orders'])->name('billing.orders.index');
-    Route::post('billing/orders', [\App\Http\Controllers\API\V1\BillingController::class, 'store'])->name('billing.orders.store');
+    Route::get('billing/plans', [BillingController::class, 'index'])->name('billing.plans');
+    Route::get('billing/orders', [BillingController::class, 'orders'])->name('billing.orders.index');
+    Route::post('billing/orders', [BillingController::class, 'store'])->name('billing.orders.store');
 });
 
 // payment notifications (signature-guarded, no auth)
-Route::post('webhooks/midtrans', \App\Http\Controllers\Billing\MidtransWebhookController::class)->name('webhooks.midtrans');
+Route::post('webhooks/midtrans', MidtransWebhookController::class)->name('webhooks.midtrans');
 
 // W3.9 public shareable-link surface for /file/s/{hash} (guest, stateless —
 // owner-approved: the password travels with every request, no session).

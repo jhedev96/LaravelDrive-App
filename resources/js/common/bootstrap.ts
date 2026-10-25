@@ -2,7 +2,7 @@
  * Shared bootstrap helpers for every entry (admin / auth / share).
  */
 import axios, { type AxiosInstance } from 'axios';
-import mitt from 'mitt';
+import mitt, { type EventType } from 'mitt';
 
 /**
  * window.LD is written by the shell blades (csrf token + authed user).
@@ -29,11 +29,9 @@ export function readLdConfig(): LdConfig {
 /**
  * Legacy `window.Bus = new Vue()` → mitt (W5.3 mapping).
  */
-export interface BusEvents {
-    [key: string]: unknown;
-}
+export type Bus = import('mitt').Emitter<Record<EventType, unknown>>;
 
-export const bus = mitt<BusEvents>();
+export const bus = mitt<Record<EventType, unknown>>();
 
 /**
  * CSRF-attached axios instance (legacy resources/assets behavior).
