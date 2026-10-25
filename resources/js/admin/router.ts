@@ -27,27 +27,27 @@ export default [
     {
         path: 'media/starred',
         name: 'starred',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/Stared.vue'),
     },
     {
         path: 'media/trash',
         name: 'trash',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/Trash.vue'),
     },
     {
         path: 'media/trash/:folderId',
         name: 'trashFolder',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/Trash.vue'),
     },
     {
         path: 'media/shared',
         name: 'shared',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/SharedWithMe.vue'),
     },
     {
         path: 'media/shared/:folderId',
         name: 'sharedFolder',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/SharedWithMe.vue'),
     },
 
     // Translation

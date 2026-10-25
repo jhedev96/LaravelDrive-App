@@ -315,6 +315,18 @@ export const useMediaStore = defineStore('media', {
             this.mediaItems = [];
         },
 
+        emptyTrashItems() {
+            this.trashItems = [];
+        },
+
+        emptyStaredItems() {
+            this.staredItems = [];
+        },
+
+        emptySharedItems() {
+            this.sharedItems = [];
+        },
+
         selectMediaItem(item: MediaItem) {
             this.selectedMedia = item;
         },
