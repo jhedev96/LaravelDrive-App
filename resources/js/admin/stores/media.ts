@@ -31,6 +31,13 @@ export interface MediaItem {
     stared?: boolean;
     meta?: Record<string, unknown>;
     description?: string;
+    public_path?: string;
+    url?: string;
+    file_name?: string;
+    created_at?: string;
+    updated_at?: string;
+    deleted_at?: string | null;
+    uploader?: { name?: string, display_name?: string, email?: string, avatar?: string } | null;
     [key: string]: unknown;
 }
 
@@ -200,10 +207,9 @@ export const useMediaStore = defineStore('media', {
         async moveFiles(params: Record<string, unknown>) {
             const res = await api.post('/api/file/move', params);
 
-            this.mediaItems = this.mediaItems.filter(
-                (i) => ! (res.data.data as number[]).includes(i.id),
-            );
-
+            // the caller decides which items left the current listing
+            // (depends on the route's parent); the legacy store action
+            // also only returned the API items
             return res.data.data;
         },
 

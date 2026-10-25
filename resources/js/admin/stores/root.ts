@@ -8,7 +8,7 @@
  */
 import { defineStore } from 'pinia';
 
-import { readLdConfig } from '@common/bootstrap';
+import { api, readLdConfig } from '@common/bootstrap';
 
 export interface Snackbar {
     show: boolean;
@@ -27,6 +27,12 @@ export const useRootStore = defineStore('root', {
         } as Snackbar,
         status: '',
         hasLoadedOnce: false,
+        stats: {
+            files: null as number | null,
+            folders: null as number | null,
+            storage_bytes: null as number | null,
+            users: null as number | null,
+        },
     }),
 
     actions: {
@@ -45,6 +51,18 @@ export const useRootStore = defineStore('root', {
 
         auth(authenticated: boolean) {
             this.isAuthenticated = authenticated;
+        },
+
+        async fetchStats(force = false) {
+            if (this.stats.storage_bytes !== null && ! force) {
+                return this.stats;
+            }
+
+            const res = await api.get('/api/stats');
+
+            this.stats = res.data;
+
+            return this.stats;
         },
     },
 });
