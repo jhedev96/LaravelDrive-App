@@ -9,6 +9,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import AdminApp from '@ac/App.vue';
 import routes from '@ac/router';
+import { ensureApiToken } from '@common/bootstrap';
 import { createDriveVuetify } from '@common/vuetify';
 
 const router = createRouter({
@@ -25,6 +26,12 @@ router.beforeEach(() => {
     return Boolean(user);
 });
 
-const app = createApp(AdminApp).use(createPinia()).use(createDriveVuetify());
+// W4.21: arm /api/auth before anything talks to the API (existing
+// localStorage bearer or a session-minted one)
+void (async () => {
+    await ensureApiToken();
 
-void app.use(router).mount('#root');
+    const app = createApp(AdminApp).use(createPinia()).use(createDriveVuetify());
+
+    void app.use(router).mount('#root');
+})();

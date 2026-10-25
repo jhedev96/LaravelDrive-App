@@ -21,6 +21,7 @@
         "yup": "^1.7.1"
     },
     "devDependencies": {
+        "@types/dropzone": "^5.7.9",
         "@vitejs/plugin-vue": "^6.0.10",
         "laravel-vite-plugin": "^3.1.0",
         "sass": "^1.106.1",

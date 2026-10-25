@@ -301,6 +301,10 @@ export const useMediaStore = defineStore('media', {
         },
 
         // ---- local state helpers -------------------------------------------
+        setMediaItem(item: MediaItem) {
+            this.mediaItems.push(item);
+        },
+
         emptyMediaItems() {
             this.mediaItems = [];
         },
