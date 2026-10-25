@@ -17,12 +17,12 @@ export default [
     {
         path: 'media',
         name: 'media',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/MyDrive.vue'),
     },
     {
         path: 'media/folder/:folderId',
         name: 'singleFolder',
-        component: () => import('@ac/components/MyDrive/Placeholder.vue'),
+        component: () => import('@ac/components/MyDrive/MyDrive.vue'),
     },
     {
         path: 'media/starred',
