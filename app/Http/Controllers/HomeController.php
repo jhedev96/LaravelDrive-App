@@ -24,8 +24,10 @@ class HomeController extends Controller implements HasMiddleware
     /**
      * Mount the drive SPA.
      */
-    public function drive()
+    public function drive(Request $request)
     {
-        return view('drive.index');
+        // window.LD.user feeds the SPA router guard; without it every
+        // request to /drive rendered with an undefined blade variable
+        return view('drive.index')->with(['user' => $request->user()]);
     }
 }

@@ -10,16 +10,14 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-
     <!-- Fonts -->
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
-    
+
     <link href="{{ asset('css/font/flaticon.css') }}" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet" type="text/css">
     <link href='https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="{{ asset('css/main.css') }}">
+    <!-- W5.2: bootstrap data read by the SPA router guard -->
     <script>
         window.LD = @json([
             'csrfToken' => csrf_token(),
@@ -27,17 +25,11 @@
         ]);
     </script>
 
+    @vite(['resources/js/admin.ts'])
 </head>
 <body>
-
     <div class="laraadmin rootouter">
         <div id="root"></div>
     </div>
-        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
-        <!-- vite entry will be attached during the frontend rebuild (WS5) -->
-
-    <!-- Scripts -->
-    <script src="{{ asset('js/config.js') }}" defer></script>
-    <script src="{{ asset('js/main.js') }}" defer></script>
 </body>
 </html>

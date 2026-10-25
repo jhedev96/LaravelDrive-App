@@ -81,6 +81,10 @@ class ShareTest extends TestCase
 
     public function test_public_shareable_page_renders_globally(): void
     {
+        // blade mounts the share SPA entry; @vite needs a built manifest
+        // which CI deliberately does not have
+        $this->withoutVite();
+
         $this->get('/file/s/whatever-hash')->assertOk();
     }
 

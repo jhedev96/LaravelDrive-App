@@ -83,40 +83,21 @@
 <div class="wrapper">
 
     <div class="container">
-        <header class="header">
-            <nav>
-                <div class="logo">
-                    <a href="/"><img src="/images/logo.png" width="150px"></a>
-                </div>
-                <div class="menu">
-                    <a href="#">
-                        <i class="material-icons">
-                            note_add
-                        </i>
-                    </a>
-                    <a href="#">
-                        <i class="material-icons">
-                            print
-                        </i>
-                    </a>
-                    <a href="#">
-                        <i class="material-icons">
-                            cloud_download
-                        </i>
-                    </a>
-                    <a class="btn-singup">
-                        Singin
-                    </a>
-                </div>
-            </nav>
-        </header>
-        <main>
-            <div class="file-wrap">
-            
-            </div>
-        </main>
+
+        <!-- W5: public SPA mount — W3.9 contract consumer ports next slice -->
+        <div id="share-root"></div>
+
     </div>
+
 </div>
-    
+
+    <script>
+        window.LD = @json([
+            'csrfToken' => $csrfToken ?? '',
+            'shareHash' => $hash ?? '',
+        ]);
+    </script>
+    @vite(['resources/js/share.ts'])
+
 </body>
 </html>

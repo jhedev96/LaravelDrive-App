@@ -3,17 +3,27 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "dev": "vite",
         "build": "vite build",
-        "dev": "vite"
+        "typecheck": "vue-tsc --noEmit"
+    },
+    "dependencies": {
+        "@mdi/font": "^7.4.47",
+        "axios": "^1.20.0",
+        "dropzone": "^5.9.3",
+        "mitt": "^3.0.1",
+        "pinia": "^4.1.0",
+        "plyr": "^3.7.9",
+        "vue": "^3.5.44",
+        "vue-router": "^4.5.0",
+        "vuetify": "^4.3.0"
     },
     "devDependencies": {
-        "@tailwindcss/vite": "^4.0.0",
-        "concurrently": "^10.0.3",
-        "laravel-vite-plugin": "^3.1",
-        "tailwindcss": "^4.0.0",
-        "vite": "^8.0.0"
-    },
-    "optionalDependencies": {
-        "@laravel/multiplex": "^0.4.1"
+        "@vitejs/plugin-vue": "^6.0.10",
+        "laravel-vite-plugin": "^3.1.0",
+        "sass": "^1.106.1",
+        "typescript": "^5.9.0",
+        "vite": "^8.0.0",
+        "vue-tsc": "^3.3.13"
     }
 }
